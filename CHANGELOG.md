@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup
 - Basic project structure
 
-[Unreleased]: https://github.com/chindris-mihai-alexandru/opencode-puter-auth/compare/v1.0.0-beta.2...HEAD
-[1.0.0-beta.2]: https://github.com/chindris-mihai-alexandru/opencode-puter-auth/compare/v1.0.0-beta.1...v1.0.0-beta.2
-[1.0.0-beta.1]: https://github.com/chindris-mihai-alexandru/opencode-puter-auth/compare/v0.0.0...v1.0.0-beta.1
-[0.0.0]: https://github.com/chindris-mihai-alexandru/opencode-puter-auth/releases/tag/v0.0.0
+[Unreleased]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.2...HEAD
+[1.0.0-beta.2]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.1...v1.0.0-beta.2
+[1.0.0-beta.1]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v0.0.0...v1.0.0-beta.1
+[0.0.0]: https://github.com/Mihai-Codes/opencode-puter-auth/releases/tag/v0.0.0

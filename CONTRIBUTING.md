@@ -10,7 +10,7 @@ This project follows the [Contributor Covenant Code of Conduct](https://www.cont
 
 ### Reporting Bugs
 
-If you find a bug, please [open an issue](https://github.com/chindris-mihai-alexandru/opencode-puter-auth/issues/new) with:
+If you find a bug, please [open an issue](https://github.com/Mihai-Codes/opencode-puter-auth/issues/new) with:
 
 - A clear, descriptive title
 - Steps to reproduce the issue
@@ -19,7 +19,7 @@ If you find a bug, please [open an issue](https://github.com/chindris-mihai-alex
 
 ### Suggesting Features
 
-Feature requests are welcome! Please [open an issue](https://github.com/chindris-mihai-alexandru/opencode-puter-auth/issues/new) describing:
+Feature requests are welcome! Please [open an issue](https://github.com/Mihai-Codes/opencode-puter-auth/issues/new) describing:
 
 - The problem you're trying to solve
 - Your proposed solution
@@ -96,7 +96,7 @@ This ensures that all contributions can be properly licensed.
 
 ## Getting Help
 
-- **Questions?** Open a [Discussion](https://github.com/chindris-mihai-alexandru/opencode-puter-auth/discussions) or [Issue](https://github.com/chindris-mihai-alexandru/opencode-puter-auth/issues)
+- **Questions?** Open a [Discussion](https://github.com/Mihai-Codes/opencode-puter-auth/discussions) or [Issue](https://github.com/Mihai-Codes/opencode-puter-auth/issues)
 - **Chat?** Tag the maintainer in your issue
 
 ## Recognition

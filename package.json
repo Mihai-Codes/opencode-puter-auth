@@ -13,11 +13,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chindris-mihai-alexandru/opencode-puter-auth.git"
+    "url": "git+https://github.com/Mihai-Codes/opencode-puter-auth.git"
   },
-  "homepage": "https://github.com/chindris-mihai-alexandru/opencode-puter-auth#readme",
+  "homepage": "https://github.com/Mihai-Codes/opencode-puter-auth#readme",
   "bugs": {
-    "url": "https://github.com/chindris-mihai-alexandru/opencode-puter-auth/issues"
+    "url": "https://github.com/Mihai-Codes/opencode-puter-auth/issues"
   },
   "keywords": [
     "opencode",

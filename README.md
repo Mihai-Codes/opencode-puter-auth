@@ -40,7 +40,7 @@ Paste this into any LLM agent (Claude Code, OpenCode, Cursor, etc.):
 ```
 Install the opencode-puter-auth plugin and configure Puter.com models 
 in ~/.config/opencode/opencode.json by following:
-https://raw.githubusercontent.com/chindris-mihai-alexandru/opencode-puter-auth/main/README.md
+https://raw.githubusercontent.com/Mihai-Codes/opencode-puter-auth/main/README.md
 ```
 
 ### Option B: Manual Setup
