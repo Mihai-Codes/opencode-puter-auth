@@ -33,19 +33,7 @@ This means whether you have 1 or 1 million users, you pay $0 for AI infrastructu
 
 ## Installation
 
-### Option A: Let an LLM do it (Easiest)
-
-Paste this into any LLM agent (Claude Code, OpenCode, Cursor, etc.):
-
-```
-Install the opencode-puter-auth plugin and configure Puter.com models 
-in ~/.config/opencode/opencode.json by following:
-https://raw.githubusercontent.com/Mihai-Codes/opencode-puter-auth/main/README.md
-```
-
-### Option B: Manual Setup
-
-1. **Add the plugin to your config** (`~/.config/opencode/opencode.json`):
+1. **Add plugin to config** (`~/.config/opencode/opencode.json`):
 
 ```json
 {
@@ -53,23 +41,20 @@ https://raw.githubusercontent.com/Mihai-Codes/opencode-puter-auth/main/README.md
 }
 ```
 
-2. **Authenticate with Puter:**
+2. **Authenticate:**
 
 ```bash
-# Install plugin globally to get CLI tool
 npm install -g opencode-puter-auth
-
-# Run authentication
 puter-auth
 ```
 
-3. **Add model definitions** (see Available Models below for full list)
-
-4. **Use it:**
+3. **Use Puter models:**
 
 ```bash
 opencode run "Hello" --model=puter/claude-opus-4-5
 ```
+
+That's it! The plugin handles everything automatically.
         "claude-opus-4-5": {
           "name": "Claude Opus 4.5 (FREE via Puter)",
           "limit": { "context": 200000, "output": 64000 },

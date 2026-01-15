@@ -11,11 +11,11 @@ function getConfigDir(): string {
   return path.join(os.homedir(), '.config', 'opencode');
 }
 
-export const PuterAuthPlugin = async (_ctx: any) => {
+export const PuterAuthPlugin = async () => {
   return {
     auth: {
       provider: 'puter',
-      loader: async () => {
+      loader: async (_getAuth: any, _provider: any) => {
         const configDir = getConfigDir();
         const authManager = new PuterAuthManager(configDir);
         await authManager.init();
