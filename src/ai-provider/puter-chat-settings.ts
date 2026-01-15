@@ -55,8 +55,9 @@ export interface PuterProviderConfig {
   /**
    * The Puter authentication token.
    * Can be obtained by authenticating with Puter.com.
+   * Optional - if not provided, will be loaded from OpenCode auth system.
    */
-  authToken: string;
+  authToken?: string;
 
   /**
    * Base URL for the Puter API.

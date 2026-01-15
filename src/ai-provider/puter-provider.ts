@@ -63,7 +63,7 @@ const DEFAULT_TIMEOUT = 120000;
  * const model = puter('claude-opus-4-5');
  * ```
  */
-export function createPuter(options: PuterProviderConfig): PuterProvider {
+export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
   const baseURL = withoutTrailingSlash(options.baseURL) ?? DEFAULT_BASE_URL;
   const timeout = options.timeout ?? DEFAULT_TIMEOUT;
   const fetchFn = options.fetch ?? globalThis.fetch;
