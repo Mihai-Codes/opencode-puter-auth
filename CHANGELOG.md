@@ -9,10 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Integration test setup for Puter API (coming soon)
-- Example usage scripts
+
+## [1.0.0-beta.5] - 2026-01-15
+
+### Fixed
+- Upgraded all vitest packages to v4.x for peer dependency compatibility
+- Fixed contributor avatar URL in README (use numeric GitHub user ID)
 
 ### Changed
-- Improved error messages with more context
+- Updated devDependencies: vitest ^4.0.0, @vitest/ui ^4.0.0, @vitest/coverage-v8 ^4.0.0
+
+## [1.0.0-beta.4] - 2026-01-14
+
+### Added
+- Example usage scripts in `examples/` directory
+- Exported additional types: `PuterChatMessage`, `PuterChatStreamChunk`, `PuterModelInfo`
+- CHANGELOG.md following Keep a Changelog format
+
+### Changed
+- Repository transferred to `Mihai-Codes` organization
+- Updated all GitHub URLs to new organization
+- Updated npm Trusted Publisher for new organization
+
+## [1.0.0-beta.3] - 2026-01-14
+
+### Changed
+- Updated dependencies: open 10.2.0 → 11.0.0, @vitest/ui 3.2.4 → 4.0.17
 
 ## [1.0.0-beta.2] - 2025-01-14
 
@@ -59,7 +81,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup
 - Basic project structure
 
-[Unreleased]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.2...HEAD
+[Unreleased]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.5...HEAD
+[1.0.0-beta.5]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.4...v1.0.0-beta.5
+[1.0.0-beta.4]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.3...v1.0.0-beta.4
+[1.0.0-beta.3]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.2...v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v0.0.0...v1.0.0-beta.1
 [0.0.0]: https://github.com/Mihai-Codes/opencode-puter-auth/releases/tag/v0.0.0
