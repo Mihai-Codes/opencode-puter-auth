@@ -17,26 +17,43 @@ export const PuterAuthPlugin = async (_ctx: any) => {
   console.log("Puter Auth Plugin initialized!");
   
   return {
-    // Auth provider - handles OAuth flow
-    'auth.provider': {
-      puter: {
-        name: 'Puter.com (FREE Unlimited)',
-        type: 'oauth' as const,
-        async login() {
-          const configDir = getConfigDir();
-          const authManager = new PuterAuthManager(configDir);
-          await authManager.init();
-          const result = await authManager.login();
-          if (!result.success) {
-            throw new Error(result.error || 'Authentication failed');
+    // Auth methods - OAuth flow registration
+    auth: {
+      provider: 'puter',
+      methods: [
+        {
+          label: 'Puter.com (FREE Unlimited)',
+          type: 'oauth' as const,
+          authorize: async () => {
+            const configDir = getConfigDir();
+            const authManager = new PuterAuthManager(configDir);
+            await authManager.init();
+            const result = await authManager.login();
+            
+            if (!result.success || !result.account) {
+              return {
+                url: '',
+                instructions: result.error || 'Authentication failed',
+                method: 'auto' as const,
+                callback: async () => ({ type: 'failed' as const, error: result.error || 'Authentication failed' })
+              };
+            }
+            
+            return {
+              url: '',
+              instructions: 'Authentication successful',
+              method: 'auto' as const,
+              callback: async () => ({ 
+                type: 'success' as const,
+                refresh: result.account!.authToken,
+                access: result.account!.authToken,
+                expires: Date.now() + 86400000
+              })
+            };
           }
-          return { success: true };
         }
-      }
-    },
-    // Auth loader - returns custom fetch for AI SDK provider
-    'auth.loader': {
-      puter: async () => {
+      ],
+      loader: async (_getAuth: any) => {
         const configDir = getConfigDir();
         const authManager = new PuterAuthManager(configDir);
         await authManager.init();
