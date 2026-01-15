@@ -64,6 +64,9 @@ const DEFAULT_TIMEOUT = 120000;
  * ```
  */
 export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
+  // Support both authToken and apiKey (OpenCode uses apiKey)
+  const authToken = options.authToken || options.apiKey;
+  
   const baseURL = withoutTrailingSlash(options.baseURL) ?? DEFAULT_BASE_URL;
   const timeout = options.timeout ?? DEFAULT_TIMEOUT;
   const fetchFn = options.fetch ?? globalThis.fetch;
@@ -78,8 +81,8 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
     };
 
     // Add auth token if provided
-    if (options.authToken) {
-      headers['Authorization'] = `Bearer ${options.authToken}`;
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
     }
 
     // Add custom headers
