@@ -73,16 +73,42 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
   const generateIdFn = options.generateId ?? generateId;
 
   /**
+   * Get auth token dynamically - either from options or from auth file.
+   * This allows OpenCode to use the plugin's auth system.
+   */
+  const getAuthToken = async (): Promise<string | undefined> => {
+    if (authToken) {
+      return authToken;
+    }
+
+    // Try to load from OpenCode's config directory
+    try {
+      const os = await import('os');
+      const path = await import('path');
+      const fs = await import('fs/promises');
+      
+      const configDir = path.join(os.homedir(), '.config', 'opencode');
+      const authFile = path.join(configDir, 'puter-auth.json');
+      
+      const authData = JSON.parse(await fs.readFile(authFile, 'utf-8'));
+      return authData.activeAccount?.authToken;
+    } catch {
+      return undefined;
+    }
+  };
+
+  /**
    * Get headers for API requests.
    */
-  const getHeaders = (): Record<string, string> => {
+  const getHeaders = async (): Promise<Record<string, string>> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Add auth token if provided
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`;
+    // Get auth token dynamically
+    const token = await getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     // Add custom headers

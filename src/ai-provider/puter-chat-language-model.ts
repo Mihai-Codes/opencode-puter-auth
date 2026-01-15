@@ -236,7 +236,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
   /**
    * Build the request body for Puter API.
    */
-  private buildRequestBody(options: LanguageModelV3CallOptions, streaming: boolean): PuterRequestBody {
+  private async buildRequestBody(options: LanguageModelV3CallOptions, streaming: boolean): Promise<PuterRequestBody> {
     const messages = this.convertPromptToMessages(options.prompt);
     
     // Filter to only function tools
@@ -260,7 +260,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
         stop: options.stopSequences ?? this.settings.stopSequences,
         tools,
       },
-      auth_token: this.config.headers()['Authorization']?.replace('Bearer ', '') || '',
+      auth_token: (await this.config.headers())['Authorization']?.replace('Bearer ', '') || '',
     };
   }
 
@@ -306,14 +306,14 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
    * Non-streaming generation.
    */
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
-    const requestBody = this.buildRequestBody(options, false);
+    const requestBody = await this.buildRequestBody(options, false);
     const warnings: SharedV3Warning[] = [];
 
     const response = await this.config.fetch(`${this.config.baseURL}/drivers/call`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...this.config.headers(),
+        ...(await this.config.headers()),
       },
       body: JSON.stringify(requestBody),
       signal: options.abortSignal,
@@ -369,7 +369,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
    * Streaming generation.
    */
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
-    const requestBody = this.buildRequestBody(options, true);
+    const requestBody = await this.buildRequestBody(options, true);
     const warnings: SharedV3Warning[] = [];
     const generateId = this.config.generateId;
 
@@ -377,7 +377,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...this.config.headers(),
+        ...(await this.config.headers()),
       },
       body: JSON.stringify(requestBody),
       signal: options.abortSignal,

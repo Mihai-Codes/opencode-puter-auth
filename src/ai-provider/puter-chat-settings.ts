@@ -116,8 +116,9 @@ export interface PuterChatConfig {
 
   /**
    * Function to get headers for requests.
+   * Can be async to support dynamic auth token loading.
    */
-  headers: () => Record<string, string>;
+  headers: () => Record<string, string> | Promise<Record<string, string>>;
 
   /**
    * Fetch function to use for requests.
