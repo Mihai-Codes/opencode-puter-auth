@@ -12,10 +12,10 @@
 // IMPORTANT: Only export the plugin function, not classes!
 // OpenCode's plugin loader calls all exports as functions, so exporting
 // classes (PuterClient, PuterAuthManager) causes "cannot call class without new" errors.
-export { PuterAuthPlugin } from './plugin-minimal.js';
+export { PuterAuthPlugin } from './plugin-simple.js';
 
 // Default export for OpenCode plugin loader
-export { PuterAuthPlugin as default } from './plugin-minimal.js';
+export { PuterAuthPlugin as default } from './plugin-simple.js';
 
 // AI SDK Provider exports - temporarily disabled for plugin loading issues
 // export { createPuter } from './ai-provider/index.js';

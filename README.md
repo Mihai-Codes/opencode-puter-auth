@@ -61,20 +61,15 @@ npm install -g opencode-puter-auth
 
 # Run authentication
 puter-auth
-
-# Or from project directory
-cd ~/.config/opencode && npx opencode-puter-auth
 ```
 
-3. **Add model definitions:**
+3. **Add model definitions** (see Available Models below for full list)
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-puter-auth"],
-  "provider": {
-    "puter": {
-      "models": {
+4. **Use it:**
+
+```bash
+opencode run "Hello" --model=puter/claude-opus-4-5
+```
         "claude-opus-4-5": {
           "name": "Claude Opus 4.5 (FREE via Puter)",
           "limit": { "context": 200000, "output": 64000 },
