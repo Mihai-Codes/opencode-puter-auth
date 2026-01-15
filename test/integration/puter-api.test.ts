@@ -293,8 +293,10 @@ describe('PuterClient Integration Tests', () => {
     });
 
     it('should throw on 429 rate limit', async () => {
+      // Disable retries to test immediate error handling
       const client = new PuterClient('rate-limited-token', {
         api_base_url: MOCK_API_URL,
+        max_retries: 0,
       });
 
       await expect(
@@ -310,8 +312,10 @@ describe('PuterClient Integration Tests', () => {
         })
       );
 
+      // Disable retries to test immediate error handling
       const client = new PuterClient(MOCK_AUTH_TOKEN, {
         api_base_url: MOCK_API_URL,
+        max_retries: 0,
       });
 
       await expect(
@@ -329,8 +333,10 @@ describe('PuterClient Integration Tests', () => {
         })
       );
 
+      // Disable retries to test immediate error handling
       const client = new PuterClient(MOCK_AUTH_TOKEN, {
         api_base_url: MOCK_API_URL,
+        max_retries: 0,
       });
 
       await expect(

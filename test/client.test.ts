@@ -8,10 +8,11 @@ describe('PuterClient', () => {
   });
 
   it('should have default models as fallback', async () => {
-    const client = new PuterClient('test-token');
+    // Use max_retries: 0 to disable retries for this test
+    const client = new PuterClient('test-token', { max_retries: 0 });
     
-    // Mock fetch to simulate API failure
-    const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    // Mock fetch to simulate API failure (401 is not retried)
+    const mockFetch = vi.fn().mockRejectedValue(new Error('Puter API error (401): Unauthorized'));
     global.fetch = mockFetch;
     
     const models = await client.listModels();
@@ -23,10 +24,11 @@ describe('PuterClient', () => {
   });
 
   it('should include Claude models in defaults', async () => {
-    const client = new PuterClient('test-token');
+    // Use max_retries: 0 to disable retries for this test
+    const client = new PuterClient('test-token', { max_retries: 0 });
     
-    // Force fallback
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    // Force fallback with non-retryable error
+    global.fetch = vi.fn().mockRejectedValue(new Error('Puter API error (401): Unauthorized'));
     
     const models = await client.listModels();
     const claudeModels = models.filter(m => m.provider === 'anthropic');

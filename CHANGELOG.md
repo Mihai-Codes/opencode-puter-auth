@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-01-15
+
+### Added
+- **Retry logic with exponential backoff** for transient API failures
+  - Automatically retries on rate limits (429), server errors (500-504), and network issues
+  - Configurable via `max_retries` and `retry_delay_ms` in config
+  - Exponential backoff with jitter to prevent thundering herd
+  - New `src/retry.ts` utility module with `withRetry`, `calculateDelay`, `isRetryableError`
+- **GitHub Issue Templates** for better contributor experience
+  - Bug report template with structured form fields
+  - Feature request template with categories and priority
+  - Template chooser with links to Discussions and docs
+- **Pull Request Template** with checklist and guidelines
+- **GitHub Discussions** enabled for community support
+- **CI Status Badge** in README
+
+### Changed
+- README now uses stable version (removed `@beta` from installation instructions)
+- Improved JSDoc documentation for `PuterClient` methods
+- Total test count: 39 → 57 tests (18 new retry tests)
+
+### Technical
+- Added `RetryOptions` interface for configuring retry behavior
+- Added `RetryError` class for retry-specific error handling
+- Client methods now use `withRetry` wrapper for automatic retries
+
 ## [1.0.1] - 2026-01-15
 
 ### Fixed
@@ -113,7 +139,8 @@ This marks the first stable release of opencode-puter-auth, providing FREE, UNLI
 - Initial project setup
 - Basic project structure
 
-[Unreleased]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.5...v1.0.0
 [1.0.0-beta.5]: https://github.com/Mihai-Codes/opencode-puter-auth/compare/v1.0.0-beta.4...v1.0.0-beta.5
