@@ -5,9 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/chindrismihai)
 
-> Access Claude Opus 4.5, Sonnet 4.5, GPT-5, Gemini, DeepSeek, and 500+ AI models through Puter.com's "User-Pays" model.
+> Access Claude Opus 4.5, Sonnet 4.5, GPT-5, Gemini, DeepSeek, and 500+ AI models through Puter.com - no API keys needed.
 
-Enable OpenCode to authenticate with [Puter.com](https://puter.com) via OAuth, giving you access to premium AI models through your Puter account.
+Enable OpenCode to authenticate with [Puter.com](https://puter.com) via OAuth, giving you easy access to premium AI models through your Puter account.
 
 ## What You Get
 
@@ -22,13 +22,13 @@ Enable OpenCode to authenticate with [Puter.com](https://puter.com) via OAuth, g
 
 ## How It Works
 
-Puter.com uses the **"User-Pays" model**:
+Puter.com uses a **credit-based model**:
 
-1. **Developers** pay nothing for infrastructure (no API keys, no billing setup)
-2. **Users** cover their own AI usage costs through their Puter account
-3. New accounts receive initial credits; premium models consume credits
+1. **No API keys** - Just sign in with your Puter account
+2. **Free credits** - New accounts get initial credits to start
+3. **Pay as you go** - Premium models consume credits; top up when needed
 
-> **Important:** Premium AI models (Claude, GPT, etc.) consume Puter credits. "Unlimited" refers to developers not paying for infrastructure - users still have credit-based limits. When credits run out, you can add more on Puter.com.
+> **Important:** Premium AI models (Claude, GPT, etc.) consume Puter credits. This is NOT unlimited - when credits run out, you can add more on Puter.com.
 
 ## Installation
 
@@ -53,65 +53,65 @@ https://raw.githubusercontent.com/Mihai-Codes/opencode-puter-auth/main/README.md
   "provider": {
     "puter": {
       "npm": "opencode-puter-auth",
-      "name": "Puter.com (FREE Unlimited AI)",
+      "name": "Puter.com (500+ AI Models)",
       "models": {
         "claude-opus-4-5": {
-          "name": "Claude Opus 4.5 (FREE via Puter)",
+          "name": "Claude Opus 4.5 (via Puter)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
         "claude-sonnet-4-5": {
-          "name": "Claude Sonnet 4.5 (FREE via Puter)",
+          "name": "Claude Sonnet 4.5 (via Puter)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
         "claude-sonnet-4": {
-          "name": "Claude Sonnet 4 (FREE via Puter)",
+          "name": "Claude Sonnet 4 (via Puter)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
         "claude-haiku-4-5": {
-          "name": "Claude Haiku 4.5 (FREE via Puter - Fast)",
+          "name": "Claude Haiku 4.5 (via Puter - Fast)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
         "gpt-5.2": {
-          "name": "GPT-5.2 (FREE via Puter)",
+          "name": "GPT-5.2 (via Puter)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text", "image"], "output": ["text"] }
         },
         "gpt-4.1-nano": {
-          "name": "GPT-4.1 Nano (FREE via Puter - Ultra Fast)",
+          "name": "GPT-4.1 Nano (via Puter - Ultra Fast)",
           "limit": { "context": 128000, "output": 16384 },
           "modalities": { "input": ["text", "image"], "output": ["text"] }
         },
         "gpt-4o": {
-          "name": "GPT-4o (FREE via Puter)",
+          "name": "GPT-4o (via Puter)",
           "limit": { "context": 128000, "output": 16384 },
           "modalities": { "input": ["text", "image"], "output": ["text"] }
         },
         "o3-mini": {
-          "name": "o3-mini (FREE via Puter - Reasoning)",
+          "name": "o3-mini (via Puter - Reasoning)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text"], "output": ["text"] }
         },
         "o4-mini": {
-          "name": "o4-mini (FREE via Puter - Reasoning)",
+          "name": "o4-mini (via Puter - Reasoning)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text"], "output": ["text"] }
         },
         "deepseek-r1": {
-          "name": "DeepSeek R1 (FREE via Puter - Reasoning)",
+          "name": "DeepSeek R1 (via Puter - Reasoning)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text"], "output": ["text"] }
         },
         "google/gemini-2.5-pro": {
-          "name": "Gemini 2.5 Pro (FREE via Puter - 1M Context)",
+          "name": "Gemini 2.5 Pro (via Puter - 1M Context)",
           "limit": { "context": 1000000, "output": 65536 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
         "google/gemini-2.5-flash": {
-          "name": "Gemini 2.5 Flash (FREE via Puter)",
+          "name": "Gemini 2.5 Flash (via Puter)",
           "limit": { "context": 1000000, "output": 65536 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         }
@@ -126,7 +126,7 @@ https://raw.githubusercontent.com/Mihai-Codes/opencode-puter-auth/main/README.md
 ```bash
 opencode auth login
 # Select "Puter" provider
-# Select "Puter.com (FREE Unlimited AI)"
+# Select "Puter.com (500+ AI Models)"
 # Complete OAuth in browser
 ```
 
@@ -239,6 +239,73 @@ The plugin adds these tools to OpenCode:
 | **Initial Free Credits** | Yes (new accounts) | Weekly refresh |
 
 **Bottom line**: Use **Puter** if you want access to Claude/GPT/DeepSeek (credit-based). Use **Antigravity** for Gemini 3 (weekly quota).
+
+## Migrating from Old Config (v1.0.27 and earlier)
+
+If you were using the old configuration format that piggybacked on Google (`google/puter-*` models), you need to update to the new standalone provider format.
+
+### Old Format (Deprecated)
+
+```json
+{
+  "plugin": ["opencode-puter-auth"],
+  "provider": {
+    "google": {
+      "models": {
+        "puter-claude-opus-4-5": { ... }
+      }
+    }
+  }
+}
+```
+
+### New Format (v1.0.32+)
+
+```json
+{
+  "plugin": ["opencode-puter-auth"],
+  "provider": {
+    "puter": {
+      "npm": "opencode-puter-auth",
+      "name": "Puter.com (500+ AI Models)",
+      "models": {
+        "claude-opus-4-5": { ... }
+      }
+    }
+  }
+}
+```
+
+### Migration Steps
+
+1. **Clear the plugin cache:**
+   ```bash
+   rm -rf ~/.cache/opencode/node_modules/opencode-puter-auth
+   rm -rf ~/.config/opencode/node_modules/opencode-puter-auth
+   ```
+
+2. **Update your `opencode.json`:**
+   - Change `provider.google.models.puter-*` to `provider.puter.models.*`
+   - Add `"npm": "opencode-puter-auth"` to the puter provider section
+   - Remove the `puter-` prefix from model names
+
+3. **Update your model references:**
+   - Old: `google/puter-claude-opus-4-5`
+   - New: `puter/claude-opus-4-5`
+
+4. **Re-authenticate:**
+   ```bash
+   opencode auth login
+   # Select "Puter" provider → "Puter.com (500+ AI Models)"
+   ```
+
+### Why the Change?
+
+The new standalone provider offers:
+- **Direct API access** - No routing through Google/Antigravity infrastructure
+- **Proper OAuth visibility** - Puter now appears in `opencode auth login`
+- **Better reliability** - Direct connection to Puter's API
+- **Cleaner model names** - `puter/claude-opus-4-5` instead of `google/puter-claude-opus-4-5`
 
 ## Troubleshooting
 

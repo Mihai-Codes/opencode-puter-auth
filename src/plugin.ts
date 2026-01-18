@@ -1,8 +1,11 @@
 /**
  * OpenCode Plugin for Puter.com Authentication
  * 
- * This plugin provides FREE, UNLIMITED access to Claude Opus 4.5, Sonnet 4.5,
- * GPT-5, Gemini, and 500+ AI models through Puter.com's "User-Pays" model.
+ * This plugin provides easy access to Claude, GPT, Gemini, and 500+ AI models
+ * through Puter.com's OAuth authentication. No API keys needed - just sign in.
+ * 
+ * Note: Puter uses a credit-based system. New accounts get free credits,
+ * and premium models consume credits. This is NOT unlimited - credits run out.
  * 
  * @author chindris-mihai-alexandru
  * @license MIT
@@ -89,7 +92,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
     // ========================================
     auth: {
       // Use 'puter' as a STANDALONE provider - NOT routing through Google!
-      // This ensures Puter's truly unlimited API is used directly without
+      // This provides direct access to Puter's API without
       // being subject to Google/Antigravity rate limits.
       //
       // Users must configure opencode.json with:
@@ -103,7 +106,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
       async loader(_auth, provider) {
         const account = authManager?.getActiveAccount();
         if (account) {
-          // Set all Puter models as FREE (cost = 0) - Puter's "User-Pays" model
+          // Set cost to 0 for OpenCode's cost tracking (Puter handles billing separately)
           if (provider?.models) {
             for (const model of Object.values(provider.models)) {
               (model as any).cost = { input: 0, output: 0, cache: { read: 0, write: 0 } };
@@ -122,7 +125,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
       methods: [
         {
           type: 'oauth',
-          label: 'Puter.com (FREE Unlimited AI)',
+          label: 'Puter.com (500+ AI Models, No API Keys)',
           
           async authorize() {
             return new Promise((resolve) => {
@@ -228,7 +231,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
               
               resolve({
                 url: `http://localhost:${CALLBACK_PORT}`,
-                instructions: 'Opening browser for Puter.com authentication. Sign in or create a FREE account to get unlimited AI access.',
+                instructions: 'Opening browser for Puter.com authentication. Sign in or create an account to access 500+ AI models.',
                 method: 'auto' as const,
                 callback: () => callbackPromise,
               });
@@ -243,7 +246,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
     // ========================================
     tool: {
       'puter-models': tool({
-        description: 'List all available Puter.com AI models (Claude, GPT, Gemini - all FREE)',
+        description: 'List all available Puter.com AI models (Claude, GPT, Gemini, etc.)',
         args: {},
         async execute() {
           if (!puterClient) {
@@ -252,7 +255,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
           
           const models = await puterClient.listModels();
           
-          let output = '# Available Puter.com Models (FREE, UNLIMITED)\n\n';
+          let output = '# Available Puter.com Models\n\n';
           
           // Group by provider
           const byProvider: Record<string, typeof models> = {};
@@ -273,7 +276,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
             output += '\n';
           }
           
-          output += `\nTotal: ${models.length} models available for FREE!`;
+          output += `\nTotal: ${models.length} models available via Puter.com`;
           
           return output;
         },
@@ -312,14 +315,14 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
           }
           
           output += '\n---\n';
-          output += 'Puter uses the "User-Pays" model - your usage is FREE and UNLIMITED!\n';
+          output += 'Puter uses a credit-based system. New accounts get free credits.\n';
           
           return output;
         },
       }),
       
       'puter-chat': tool({
-        description: 'Send a chat message using Puter AI (FREE). Use this to access Claude Opus 4.5, GPT-5, Gemini, etc.',
+        description: 'Send a chat message using Puter AI. Access Claude, GPT, Gemini via Puter.com.',
         args: {
           message: tool.schema.string().describe('The message to send to the AI'),
           model: tool.schema.string().optional().describe('Model to use (default: claude-sonnet-4-5). Options: claude-opus-4-5, claude-sonnet-4-5, gpt-5.2, gpt-4o, gemini-2.5-pro, etc.'),
