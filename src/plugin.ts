@@ -41,6 +41,306 @@ const CALLBACK_PORT = 19847;
 const AUTH_TIMEOUT_MS = 300000;
 
 /**
+ * Generate the HTML login page for Puter authentication.
+ * Puter uses username/password login via REST API, not OAuth redirects.
+ * This page handles the login flow entirely in the browser, including 2FA.
+ */
+function getLoginPage(callbackPort: number): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in to Puter - OpenCode</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .logo h1 {
+      font-size: 28px;
+      color: #333;
+    }
+    .logo p {
+      color: #666;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .error {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .info {
+      background: #dbeafe;
+      border: 1px solid #93c5fd;
+      color: #1d4ed8;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .signup-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+    .signup-link a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    .signup-link a:hover { text-decoration: underline; }
+    #otp-section { display: none; }
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <h1>Puter</h1>
+      <p>Sign in to access 500+ AI models via OpenCode</p>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <div class="info">
+      Sign in with your Puter.com account. If you don't have one, 
+      <a href="https://puter.com" target="_blank">create a free account</a> first.
+    </div>
+
+    <form id="login-form">
+      <div id="credentials-section">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password">
+        </div>
+      </div>
+
+      <div id="otp-section">
+        <div class="form-group">
+          <label for="otp">Authenticator Code (2FA)</label>
+          <input type="text" id="otp" name="otp" maxlength="6" pattern="[0-9]{6}" 
+                 placeholder="Enter 6-digit code" autocomplete="one-time-code">
+        </div>
+      </div>
+
+      <button type="submit" id="submit-btn">Sign In</button>
+    </form>
+
+    <div class="signup-link">
+      Don't have an account? <a href="https://puter.com" target="_blank">Sign up for Puter</a>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const errorDiv = document.getElementById('error');
+    const submitBtn = document.getElementById('submit-btn');
+    const credentialsSection = document.getElementById('credentials-section');
+    const otpSection = document.getElementById('otp-section');
+    const otpInput = document.getElementById('otp');
+    
+    let otpJwtToken = null; // For 2FA flow
+
+    function showError(message) {
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function hideError() {
+      errorDiv.style.display = 'none';
+    }
+
+    function setLoading(loading) {
+      submitBtn.disabled = loading;
+      submitBtn.innerHTML = loading 
+        ? '<span class="spinner"></span>Signing in...' 
+        : 'Sign In';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideError();
+      setLoading(true);
+
+      try {
+        let response, data;
+
+        if (otpJwtToken) {
+          // 2FA step
+          const otp = otpInput.value.trim();
+          if (otp.length !== 6) {
+            showError('Please enter a 6-digit code');
+            setLoading(false);
+            return;
+          }
+
+          response = await fetch('https://puter.com/login/otp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Origin': 'https://puter.com',
+              'Referer': 'https://puter.com/'
+            },
+            body: JSON.stringify({
+              token: otpJwtToken,
+              code: otp
+            })
+          });
+        } else {
+          // Initial login
+          const username = document.getElementById('username').value.trim();
+          const password = document.getElementById('password').value;
+
+          response = await fetch('https://puter.com/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Origin': 'https://puter.com',
+              'Referer': 'https://puter.com/'
+            },
+            body: JSON.stringify({ username, password })
+          });
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          const text = await response.text();
+          throw new Error(text || 'Login failed');
+        }
+
+        data = await response.json();
+
+        // Handle multi-step login (2FA)
+        while (data.proceed && data.next_step) {
+          if (data.next_step === 'otp') {
+            // Show 2FA input
+            otpJwtToken = data.otp_jwt_token;
+            credentialsSection.style.display = 'none';
+            otpSection.style.display = 'block';
+            submitBtn.textContent = 'Verify Code';
+            setLoading(false);
+            otpInput.focus();
+            return; // Wait for user to submit OTP
+          }
+
+          if (data.next_step === 'complete') {
+            break;
+          }
+
+          throw new Error('Unrecognized login step: ' + data.next_step);
+        }
+
+        // Success - we have the token
+        if (data.proceed && data.token) {
+          // Get user info to get username
+          let username = document.getElementById('username').value.trim();
+          
+          // Redirect to callback with token
+          const callbackUrl = new URL('http://localhost:${callbackPort}/callback');
+          callbackUrl.searchParams.set('token', data.token);
+          callbackUrl.searchParams.set('username', username);
+          if (data.email) {
+            callbackUrl.searchParams.set('email', data.email);
+          }
+          
+          window.location.href = callbackUrl.toString();
+        } else {
+          throw new Error('Login failed. Please check your credentials.');
+        }
+
+      } catch (err) {
+        showError(err.message || 'Login failed');
+        setLoading(false);
+      }
+    }
+
+    form.addEventListener('submit', handleLogin);
+    
+    // Focus username on load
+    document.getElementById('username').focus();
+  </script>
+</body>
+</html>`;
+}
+
+/**
  * Load plugin configuration from puter.json
  */
 async function loadConfig(configDir: string): Promise<Partial<PuterConfig>> {
@@ -198,12 +498,9 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
                       res.end('<html><body><h1>Missing token</h1></body></html>');
                     }
                   } else if (url.pathname === '/') {
-                    // Redirect to Puter auth
-                    const callbackUrl = encodeURIComponent(`http://localhost:${CALLBACK_PORT}/callback`);
-                    const authUrl = `https://puter.com/auth?redirect=${callbackUrl}`;
-                    
-                    res.writeHead(302, { Location: authUrl });
-                    res.end();
+                    // Serve login page - Puter uses username/password, not OAuth redirects
+                    res.writeHead(200, { 'Content-Type': 'text/html' });
+                    res.end(getLoginPage(CALLBACK_PORT));
                   } else {
                     res.writeHead(404);
                     res.end('Not found');
@@ -231,7 +528,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
               
               resolve({
                 url: `http://localhost:${CALLBACK_PORT}`,
-                instructions: 'Opening browser for Puter.com authentication. Sign in or create an account to access 500+ AI models.',
+                instructions: 'Opening browser for Puter.com login. Enter your Puter username and password to authenticate.',
                 method: 'auto' as const,
                 callback: () => callbackPromise,
               });
