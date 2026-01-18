@@ -39,90 +39,80 @@ This means whether you have 1 or 1 million users, you pay $0 for AI infrastructu
 Paste this into any LLM agent (Claude Code, OpenCode, Cursor, etc.):
 
 ```
-Install the opencode-puter-auth plugin and configure Puter.com models 
+Install the opencode-puter-auth plugin and configure Puter.com models
 in ~/.config/opencode/opencode.json by following:
 https://raw.githubusercontent.com/Mihai-Codes/opencode-puter-auth/main/README.md
 ```
 
 ### Option B: Manual Setup
 
-1. **Add the plugin to your config** (`~/.config/opencode/opencode.json`):
-
-```json
-{
-  "plugin": ["opencode-puter-auth"]
-}
-```
-
-2. **Authenticate with Puter:**
-
-```bash
-# Run the CLI authentication command
-puter-auth
-```
-
-> **Note:** Puter authentication does NOT appear in `opencode auth login`. This is by design - the plugin uses the same pattern as `opencode-antigravity-auth`, piggybacking on the `google` provider. Authentication happens automatically when you first use a Puter model, or you can run `puter-auth` manually.
-
-3. **Add model definitions:**
+1. **Add the complete configuration to your opencode.json** (`~/.config/opencode/opencode.json`):
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-puter-auth"],
   "provider": {
-    "google": {
+    "puter": {
+      "npm": "opencode-puter-auth",
+      "name": "Puter.com (FREE Unlimited AI)",
       "models": {
-        "puter-claude-opus-4-5": {
+        "claude-opus-4-5": {
           "name": "Claude Opus 4.5 (FREE via Puter)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
-        "puter-claude-sonnet-4-5": {
+        "claude-sonnet-4-5": {
           "name": "Claude Sonnet 4.5 (FREE via Puter)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
-        "puter-claude-sonnet-4": {
+        "claude-sonnet-4": {
           "name": "Claude Sonnet 4 (FREE via Puter)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
-        "puter-claude-haiku-4-5": {
+        "claude-haiku-4-5": {
           "name": "Claude Haiku 4.5 (FREE via Puter - Fast)",
           "limit": { "context": 200000, "output": 64000 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
-        "puter-gpt-5.2": {
+        "gpt-5.2": {
           "name": "GPT-5.2 (FREE via Puter)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text", "image"], "output": ["text"] }
         },
-        "puter-gpt-5-nano": {
-          "name": "GPT-5 Nano (FREE via Puter - Ultra Fast)",
+        "gpt-4.1-nano": {
+          "name": "GPT-4.1 Nano (FREE via Puter - Ultra Fast)",
           "limit": { "context": 128000, "output": 16384 },
           "modalities": { "input": ["text", "image"], "output": ["text"] }
         },
-        "puter-o3-mini": {
+        "gpt-4o": {
+          "name": "GPT-4o (FREE via Puter)",
+          "limit": { "context": 128000, "output": 16384 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] }
+        },
+        "o3-mini": {
           "name": "o3-mini (FREE via Puter - Reasoning)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text"], "output": ["text"] }
         },
-        "puter-o4-mini": {
+        "o4-mini": {
           "name": "o4-mini (FREE via Puter - Reasoning)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text"], "output": ["text"] }
         },
-        "puter-deepseek-r1": {
+        "deepseek-r1": {
           "name": "DeepSeek R1 (FREE via Puter - Reasoning)",
           "limit": { "context": 128000, "output": 32768 },
           "modalities": { "input": ["text"], "output": ["text"] }
         },
-        "puter-gemini-2.5-pro": {
+        "google/gemini-2.5-pro": {
           "name": "Gemini 2.5 Pro (FREE via Puter - 1M Context)",
           "limit": { "context": 1000000, "output": 65536 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
         },
-        "puter-gemini-2.5-flash": {
+        "google/gemini-2.5-flash": {
           "name": "Gemini 2.5 Flash (FREE via Puter)",
           "limit": { "context": 1000000, "output": 65536 },
           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
@@ -133,10 +123,19 @@ puter-auth
 }
 ```
 
-4. **Use it:**
+2. **Authenticate with Puter:**
 
 ```bash
-opencode run "Hello" --model=google/puter-claude-opus-4-5
+opencode auth login
+# Select "Puter" provider
+# Select "Puter.com (FREE Unlimited AI)"
+# Complete OAuth in browser
+```
+
+3. **Use it:**
+
+```bash
+opencode --model=puter/claude-opus-4-5
 ```
 
 ## Available Models (January 2026)
@@ -145,33 +144,33 @@ opencode run "Hello" --model=google/puter-claude-opus-4-5
 
 | Model | Description | Context | Best For |
 |-------|-------------|---------|----------|
-| `google/puter-claude-opus-4-5` | **Best coding model in the world** | 200K | Complex reasoning, agentic coding |
-| `google/puter-claude-sonnet-4-5` | Balanced performance | 200K | General coding tasks |
-| `google/puter-claude-sonnet-4` | Previous gen Sonnet | 200K | Fast coding |
-| `google/puter-claude-haiku-4-5` | Fastest Claude | 200K | Simple tasks, quick responses |
+| `puter/claude-opus-4-5` | **Best coding model in the world** | 200K | Complex reasoning, agentic coding |
+| `puter/claude-sonnet-4-5` | Balanced performance | 200K | General coding tasks |
+| `puter/claude-sonnet-4` | Previous gen Sonnet | 200K | Fast coding |
+| `puter/claude-haiku-4-5` | Fastest Claude | 200K | Simple tasks, quick responses |
 
 ### OpenAI (GPT) - Latest Models
 
 | Model | Description | Context | Best For |
 |-------|-------------|---------|----------|
-| `google/puter-gpt-5.2` | Latest GPT model | 128K | Advanced tasks |
-| `google/puter-gpt-5-nano` | **Default model** - Ultra-fast | 128K | Quick responses |
-| `google/puter-o3-mini` | Reasoning model | 128K | Complex logic |
-| `google/puter-o4-mini` | Latest reasoning model | 128K | Advanced reasoning |
-| `google/puter-gpt-4o` | Multimodal GPT | 128K | Vision tasks |
+| `puter/gpt-5.2` | Latest GPT model | 128K | Advanced tasks |
+| `puter/gpt-4.1-nano` | Ultra-fast | 128K | Quick responses |
+| `puter/gpt-4o` | Multimodal GPT | 128K | Vision tasks |
+| `puter/o3-mini` | Reasoning model | 128K | Complex logic |
+| `puter/o4-mini` | Latest reasoning model | 128K | Advanced reasoning |
 
 ### Google (Gemini) - Massive Context
 
 | Model | Description | Context | Best For |
 |-------|-------------|---------|----------|
-| `google/puter-gemini-2.5-pro` | Best Gemini | 1M | Huge codebases |
-| `google/puter-gemini-2.5-flash` | Fast Gemini | 1M | Quick analysis |
+| `puter/google/gemini-2.5-pro` | Best Gemini | 1M | Huge codebases |
+| `puter/google/gemini-2.5-flash` | Fast Gemini | 1M | Quick analysis |
 
 ### DeepSeek - Advanced Reasoning
 
 | Model | Description | Context | Best For |
 |-------|-------------|---------|----------|
-| `google/puter-deepseek-r1` | Advanced reasoning | 128K | Complex problem solving |
+| `puter/deepseek-r1` | Advanced reasoning | 128K | Complex problem solving |
 
 ## AI SDK Provider (Standalone Usage)
 
@@ -240,20 +239,26 @@ The plugin adds these tools to OpenCode:
 | **DeepSeek R1** | **Unlimited** | No |
 | **Gemini 3** | No | Limited |
 | **Multi-Account** | N/A (unlimited) | Required for quota |
-| **Auth Method** | Puter OAuth (`puter-auth`) | Google OAuth |
-| **Shows in `opencode auth login`** | No (uses `puter-auth` CLI) | Yes |
+| **Provider Type** | Standalone (`puter/`) | Google piggyback (`google/`) |
+| **Shows in `opencode auth login`** | **Yes** (select Puter) | Yes (select Google) |
 
 **Bottom line**: Use **Puter** for unlimited Claude/GPT/DeepSeek access. Use **Antigravity** for Gemini 3.
 
 ## Troubleshooting
 
-### "Puter not showing in opencode auth login"
-
-This is expected! The plugin uses the same pattern as `opencode-antigravity-auth` - it piggybacks on the `google` provider. To authenticate:
+### Clear cached plugin and reinstall
 
 ```bash
-# Run the Puter CLI auth command
-puter-auth
+# macOS/Linux
+rm -rf ~/.cache/opencode/node_modules/opencode-puter-auth
+rm -rf ~/.config/opencode/node_modules/opencode-puter-auth
+
+# Windows (PowerShell)
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\opencode\node_modules\opencode-puter-auth" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "$env:APPDATA\opencode\node_modules\opencode-puter-auth" -ErrorAction SilentlyContinue
+
+# Restart opencode
+opencode
 ```
 
 ### Browser doesn't open for auth
@@ -266,8 +271,8 @@ http://localhost:19847
 ### "Not authenticated" error
 
 ```bash
-# Run the CLI auth command
-puter-auth
+opencode auth login
+# Select "Puter" provider
 ```
 
 ### API timeout errors

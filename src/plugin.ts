@@ -16,7 +16,6 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { PuterClient } from './client.js';
 import { createPuterAuthManager, type PuterAuthManager } from './auth.js';
-import { createPuterFetch } from './provider.js';
 import type { PuterConfig, PuterChatMessage, PuterAccount } from './types.js';
 import { PuterConfigSchema } from './types.js';
 
@@ -86,34 +85,35 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
 
   return {
     // ========================================
-    // AUTH HOOK - OAuth with Puter
+    // AUTH HOOK - OAuth with Puter (Standalone Provider)
     // ========================================
     auth: {
-      // Use 'google' provider - OpenCode knows how to instantiate it
-      // Models are defined with 'puter-' prefix under provider.google.models
-      // The custom fetch intercepts requests for puter-* models and routes to Puter API
-      // This is the same pattern used by opencode-antigravity-auth
-      provider: 'google',
-      
+      // Use 'puter' as a STANDALONE provider - NOT routing through Google!
+      // This ensures Puter's truly unlimited API is used directly without
+      // being subject to Google/Antigravity rate limits.
+      //
+      // Users must configure opencode.json with:
+      //   "provider": { "puter": { "npm": "opencode-puter-auth", ... } }
+      //
+      // Models are then accessed as puter/claude-opus-4-5, puter/gpt-4o, etc.
+      provider: 'puter',
+
       // Load auth credentials for Puter provider
+      // Returns the API key (auth token) that OpenCode passes to the AI SDK provider
       async loader(_auth, provider) {
         const account = authManager?.getActiveAccount();
         if (account) {
-          // Set all Puter models (puter-* prefix) as FREE (cost = 0)
+          // Set all Puter models as FREE (cost = 0) - Puter's "User-Pays" model
           if (provider?.models) {
-            for (const [modelId, model] of Object.entries(provider.models)) {
-              // Only modify puter-* models
-              if (modelId.startsWith('puter-')) {
-                (model as any).cost = { input: 0, output: 0, cache: { read: 0, write: 0 } };
-              }
+            for (const model of Object.values(provider.models)) {
+              (model as any).cost = { input: 0, output: 0, cache: { read: 0, write: 0 } };
             }
           }
-          
-          // Return custom fetch function that intercepts puter-* model requests
-          // and routes them to Puter's API with proper request/response translation
+
+          // Return the auth token - OpenCode passes this to createPuter() as apiKey
+          // The AI SDK provider (createPuter) uses this to authenticate with Puter's API
           return {
-            apiKey: '',  // Not needed - auth handled via custom fetch
-            fetch: createPuterFetch(account.authToken, pluginConfig),
+            apiKey: account.authToken,
           };
         }
         return {};
