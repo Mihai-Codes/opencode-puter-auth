@@ -142,7 +142,10 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
   readonly modelId: string;
   
   private readonly settings: PuterChatSettings;
-  private readonly config: PuterChatConfig;
+  // IMPORTANT: Named _modelConfig (not 'config') to avoid collision with OpenCode's
+  // plugin loader which checks hook.config expecting a function. Using 'config'
+  // here causes "hook.config is not a function" errors at startup.
+  private readonly _modelConfig: PuterChatConfig;
   private puterInstance: PuterSDK | null = null;
   private readonly fallbackManager: FallbackManager;
   private readonly logger: Logger;
@@ -154,7 +157,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
   ) {
     this.modelId = modelId;
     this.settings = settings;
-    this.config = config;
+    this._modelConfig = config;
     this.provider = config.provider;
     
     // Initialize fallback manager with config options
@@ -178,7 +181,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     const { init } = require('@heyputer/puter.js/src/init.cjs') as { init: (token?: string) => PuterSDK };
 
     // Get auth token from config headers
-    const headers = await this.config.headers();
+    const headers = await this._modelConfig.headers();
     const authHeader = headers['Authorization'] || '';
     const authToken = authHeader.replace('Bearer ', '');
 
@@ -504,7 +507,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     const puter = await this.initPuterSDK();
     const messages = this.convertPromptToMessages(options.prompt);
     const warnings: LanguageModelV2CallWarning[] = [];
-    const generateId = this.config.generateId;
+    const generateId = this._modelConfig.generateId;
     
     // Check if fallback is disabled for this request
     const useFallback = !this.settings.disableFallback;
