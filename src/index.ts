@@ -28,7 +28,11 @@ export { createPuter, puter } from './ai-provider/index.js';
 export type { PuterProvider, PuterChatSettings, PuterProviderConfig, PuterChatConfig } from './ai-provider/index.js';
 
 // Logger exports for debug mode
-export { createLogger, createLoggerFromConfig, nullLogger, LogLevel } from './logger.js';
+// NOTE: createLogger and createLoggerFromConfig are NOT exported from main entry point
+// because OpenCode's provider loader finds exports starting with "create" and calls them.
+// It would find createLogger before createPuter alphabetically, causing errors.
+// Users needing direct logger access can import from the logger module directly.
+export { nullLogger, LogLevel } from './logger.js';
 export type { Logger, LoggerOptions } from './logger.js';
 
 // Fallback Manager exports for automatic model fallback
