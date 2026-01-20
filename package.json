@@ -1,6 +1,6 @@
 {
   "name": "opencode-puter-auth",
-  "version": "1.0.44",
+  "version": "1.0.45",
   "description": "Puter.com OAuth plugin for OpenCode - Easy access to Claude, GPT, Gemini & 500+ AI models. No API keys needed, credit-based usage.",
   "bin": {
     "puter-auth": "dist/cli.js"
