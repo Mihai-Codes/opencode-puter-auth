@@ -197,24 +197,13 @@ let _puterInstance: PuterProvider | null = null;
 
 function getPuterInstance(): PuterProvider {
   if (!_puterInstance) {
+    // Check for auth token in environment variable first
     const authToken = process.env.PUTER_AUTH_TOKEN;
-    if (!authToken) {
-      // Return a dummy provider that throws helpful errors
-      return {
-        languageModel: () => {
-          throw new Error(
-            'PUTER_AUTH_TOKEN environment variable is required for the default puter provider. ' +
-            'Either set the environment variable or use createPuter() with an explicit authToken.'
-          );
-        },
-        chat: () => {
-          throw new Error(
-            'PUTER_AUTH_TOKEN environment variable is required for the default puter provider. ' +
-            'Either set the environment variable or use createPuter() with an explicit authToken.'
-          );
-        }
-      } as any;
-    }
+    
+    // Create the provider - it will dynamically load auth from:
+    // 1. The authToken passed here (from env var)
+    // 2. The config file (~/.config/opencode/puter-accounts.json) if no authToken
+    // This allows OpenCode's auth.loader to inject the token dynamically
     _puterInstance = createPuter({ authToken });
   }
   return _puterInstance;

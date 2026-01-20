@@ -22,10 +22,12 @@
  * ```
  */
 
-// Provider exports - only export factory functions, not default instances
-export { createPuter } from './puter-provider.js';
-// Alias for OpenCode compatibility (expects createOpenAICompatible pattern)
-export { createPuter as default } from './puter-provider.js';
+// Provider exports
+export { createPuter, puter } from './puter-provider.js';
+// Default export is the lazy-loaded puter provider instance
+// OpenCode calls sdk.languageModel(modelId) on the default export,
+// so we export the puter instance (not createPuter factory)
+export { puter as default } from './puter-provider.js';
 export type { PuterProvider } from './puter-provider.js';
 
 // Model exports

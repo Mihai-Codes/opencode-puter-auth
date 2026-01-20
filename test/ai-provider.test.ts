@@ -3,7 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createPuter, PuterChatLanguageModel } from '../src/ai-provider/index.js';
+import { createPuter, puter, PuterChatLanguageModel } from '../src/ai-provider/index.js';
+import puterDefault from '../src/ai-provider/index.js';
 import type { LanguageModelV3CallOptions, LanguageModelV3Message } from '@ai-sdk/provider';
 
 // Mock fetch
@@ -16,6 +17,34 @@ describe('Puter AI SDK Provider', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('default export (puter instance)', () => {
+    it('should have languageModel method for OpenCode compatibility', () => {
+      // OpenCode calls sdk.languageModel(modelId) on the default export
+      expect(puterDefault).toBeDefined();
+      expect(typeof puterDefault.languageModel).toBe('function');
+      expect(typeof puterDefault.chat).toBe('function');
+    });
+
+    it('should be callable as a function', () => {
+      // Provider should also be callable directly: puter('claude-opus-4-5')
+      expect(typeof puterDefault).toBe('function');
+    });
+
+    it('should create a model when languageModel is called', () => {
+      const model = puterDefault.languageModel('claude-opus-4-5');
+      expect(model).toBeInstanceOf(PuterChatLanguageModel);
+      expect(model.modelId).toBe('claude-opus-4-5');
+    });
+
+    it('should return v3 specification version', () => {
+      expect(puterDefault.specificationVersion).toBe('v3');
+    });
+
+    it('should be the same as the named puter export', () => {
+      expect(puterDefault).toBe(puter);
+    });
   });
 
   describe('createPuter', () => {

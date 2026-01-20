@@ -19,11 +19,12 @@
 export { PuterAuthPlugin } from './plugin.js';
 
 // Default export for OpenCode plugin loader AND AI SDK provider
-// OpenCode will use this as the provider factory when npm field is set
-export { createPuter as default } from './ai-provider/index.js';
+// OpenCode calls sdk.languageModel(modelId) on the default export,
+// so we export the puter provider instance (not createPuter factory)
+export { default } from './ai-provider/index.js';
 
 // AI SDK Provider exports
-export { createPuter } from './ai-provider/index.js';
+export { createPuter, puter } from './ai-provider/index.js';
 export type { PuterProvider, PuterChatSettings, PuterProviderConfig, PuterChatConfig } from './ai-provider/index.js';
 
 // Logger exports for debug mode
