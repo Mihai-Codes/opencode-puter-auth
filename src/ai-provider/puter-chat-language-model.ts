@@ -1,27 +1,27 @@
 /**
  * Puter Chat Language Model
  * 
- * Implements the AI SDK LanguageModelV3 interface using the official @heyputer/puter.js SDK.
+ * Implements the AI SDK LanguageModelV2 interface using the official @heyputer/puter.js SDK.
  * This enables Puter to work as a proper AI SDK provider in OpenCode.
+ * 
+ * Note: We use V2 because OpenCode's AI SDK 5.x only supports LanguageModelV2.
  * 
  * Features automatic model fallback when rate limits are encountered.
  */
 
 import type {
-  LanguageModelV3,
-  LanguageModelV3CallOptions,
-  LanguageModelV3GenerateResult,
-  LanguageModelV3StreamResult,
-  LanguageModelV3StreamPart,
-  LanguageModelV3Content,
-  LanguageModelV3FinishReason,
-  LanguageModelV3Usage,
-  LanguageModelV3Message,
-  LanguageModelV3TextPart,
-  LanguageModelV3ToolCallPart,
-  LanguageModelV3ToolResultPart,
-  LanguageModelV3FunctionTool,
-  SharedV3Warning,
+  LanguageModelV2,
+  LanguageModelV2CallOptions,
+  LanguageModelV2StreamPart,
+  LanguageModelV2Content,
+  LanguageModelV2FinishReason,
+  LanguageModelV2Usage,
+  LanguageModelV2Message,
+  LanguageModelV2TextPart,
+  LanguageModelV2ToolCallPart,
+  LanguageModelV2ToolResultPart,
+  LanguageModelV2FunctionTool,
+  LanguageModelV2CallWarning,
 } from '@ai-sdk/provider';
 import type { PuterChatSettings, PuterChatConfig } from './puter-chat-settings.js';
 import { 
@@ -126,16 +126,18 @@ interface PuterSDK {
 }
 
 /**
- * Puter Chat Language Model implementing LanguageModelV3.
+ * Puter Chat Language Model implementing LanguageModelV2.
  * Uses the official @heyputer/puter.js SDK for all API calls.
+ * 
+ * Note: We use V2 because OpenCode's AI SDK 5.x only supports LanguageModelV2.
  * 
  * Features automatic model fallback when rate limits are encountered:
  * - Detects rate limit errors (429, 403)
  * - Automatically switches to free OpenRouter models
  * - Tracks model cooldowns to avoid repeated failures
  */
-export class PuterChatLanguageModel implements LanguageModelV3 {
-  readonly specificationVersion = 'v3' as const;
+export class PuterChatLanguageModel implements LanguageModelV2 {
+  readonly specificationVersion = 'v2' as const;
   readonly provider: string;
   readonly modelId: string;
   
@@ -202,7 +204,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
   /**
    * Convert AI SDK prompt to Puter SDK message format.
    */
-  private convertPromptToMessages(prompt: LanguageModelV3Message[]): PuterSDKMessage[] {
+  private convertPromptToMessages(prompt: LanguageModelV2Message[]): PuterSDKMessage[] {
     const messages: PuterSDKMessage[] = [];
 
     for (const message of prompt) {
@@ -214,7 +216,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
       } else if (message.role === 'user') {
         // Extract text from user message parts
         const textParts = message.content
-          .filter((part): part is LanguageModelV3TextPart => part.type === 'text')
+          .filter((part): part is LanguageModelV2TextPart => part.type === 'text')
           .map(part => part.text);
         
         messages.push({
@@ -224,11 +226,11 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
       } else if (message.role === 'assistant') {
         // Handle assistant messages with potential tool calls
         const textParts = message.content
-          .filter((part): part is LanguageModelV3TextPart => part.type === 'text')
+          .filter((part): part is LanguageModelV2TextPart => part.type === 'text')
           .map(part => part.text);
         
         const toolCallParts = message.content
-          .filter((part): part is LanguageModelV3ToolCallPart => part.type === 'tool-call');
+          .filter((part): part is LanguageModelV2ToolCallPart => part.type === 'tool-call');
 
         const puterMessage: PuterSDKMessage = {
           role: 'assistant',
@@ -251,7 +253,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
         // Handle tool results
         for (const part of message.content) {
           if (part.type === 'tool-result') {
-            const toolResultPart = part as LanguageModelV3ToolResultPart;
+            const toolResultPart = part as LanguageModelV2ToolResultPart;
             const output = toolResultPart.output;
             let contentStr: string;
             if (typeof output === 'string') {
@@ -281,7 +283,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
   /**
    * Convert AI SDK tools to Puter SDK tool format.
    */
-  private convertTools(tools: LanguageModelV3FunctionTool[] | undefined): PuterSDKTool[] | undefined {
+  private convertTools(tools: LanguageModelV2FunctionTool[] | undefined): PuterSDKTool[] | undefined {
     if (!tools || tools.length === 0) return undefined;
 
     return tools.map(tool => ({
@@ -302,13 +304,13 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
    * @param modelOverride - Optional model to use instead of this.modelId (for fallback)
    */
   private buildSDKOptions(
-    options: LanguageModelV3CallOptions, 
+    options: LanguageModelV2CallOptions, 
     streaming: boolean,
     modelOverride?: string
   ): PuterSDKOptions {
     // Filter to only function tools
     const functionTools = options.tools?.filter(
-      (tool): tool is LanguageModelV3FunctionTool => tool.type === 'function'
+      (tool): tool is LanguageModelV2FunctionTool => tool.type === 'function'
     );
     const tools = this.convertTools(functionTools);
 
@@ -339,40 +341,29 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
   }
 
   /**
-   * Map Puter finish reason to AI SDK format.
+   * Map Puter finish reason to AI SDK V2 format (simple string).
    */
-  private mapFinishReason(reason?: string): LanguageModelV3FinishReason {
-    const unified = (() => {
-      if (!reason) return 'other';
-      if (reason === 'stop' || reason === 'end_turn') return 'stop';
-      if (reason === 'length' || reason === 'max_tokens') return 'length';
-      if (reason === 'tool_calls' || reason === 'tool_use') return 'tool-calls';
-      if (reason === 'content_filter') return 'content-filter';
-      return 'other';
-    })();
-
-    return {
-      unified,
-      raw: reason,
-    };
+  private mapFinishReason(reason?: string): LanguageModelV2FinishReason {
+    if (!reason) return 'other';
+    if (reason === 'stop' || reason === 'end_turn') return 'stop';
+    if (reason === 'length' || reason === 'max_tokens') return 'length';
+    if (reason === 'tool_calls' || reason === 'tool_use') return 'tool-calls';
+    if (reason === 'content_filter') return 'content-filter';
+    return 'other';
   }
 
   /**
-   * Map Puter usage to AI SDK format.
+   * Map Puter usage to AI SDK V2 format (flat structure).
    */
-  private mapUsage(usage?: PuterUsage): LanguageModelV3Usage {
+  private mapUsage(usage?: PuterUsage): LanguageModelV2Usage {
+    const inputTokens = usage?.prompt_tokens;
+    const outputTokens = usage?.completion_tokens;
     return {
-      inputTokens: {
-        total: usage?.prompt_tokens,
-        noCache: undefined,
-        cacheRead: usage?.cached_tokens,
-        cacheWrite: undefined,
-      },
-      outputTokens: {
-        total: usage?.completion_tokens,
-        text: undefined,
-        reasoning: undefined,
-      },
+      inputTokens,
+      outputTokens,
+      totalTokens: inputTokens !== undefined && outputTokens !== undefined
+        ? inputTokens + outputTokens
+        : undefined,
     };
   }
 
@@ -402,10 +393,17 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
    * Automatically falls back to alternative models when rate limits are hit,
    * unless `disableFallback` is set in settings.
    */
-  async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
+  async doGenerate(options: LanguageModelV2CallOptions): Promise<{
+    content: Array<LanguageModelV2Content>;
+    finishReason: LanguageModelV2FinishReason;
+    usage: LanguageModelV2Usage;
+    warnings: Array<LanguageModelV2CallWarning>;
+    request?: { body?: unknown };
+    response?: { body?: unknown };
+  }> {
     const puter = await this.initPuterSDK();
     const messages = this.convertPromptToMessages(options.prompt);
-    const warnings: SharedV3Warning[] = [];
+    const warnings: LanguageModelV2CallWarning[] = [];
     
     // Check if fallback is disabled for this request
     const useFallback = !this.settings.disableFallback;
@@ -436,7 +434,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
         warnings.push({
           type: 'other',
           message: `Model ${this.modelId} rate limited, used fallback: ${actualModelUsed}`,
-        } as SharedV3Warning);
+        });
       }
     } else {
       // Execute without fallback
@@ -444,7 +442,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
       response = await puter.ai.chat(messages, sdkOptions) as PuterChatResponse;
     }
 
-    const content: LanguageModelV3Content[] = [];
+    const content: LanguageModelV2Content[] = [];
 
     // Extract text content (handles both string and array formats)
     const textContent = this.extractTextContent(response.message?.content);
@@ -499,10 +497,13 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
    * Automatically falls back to alternative models when rate limits are hit,
    * unless `disableFallback` is set in settings.
    */
-  async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
+  async doStream(options: LanguageModelV2CallOptions): Promise<{
+    stream: ReadableStream<LanguageModelV2StreamPart>;
+    request?: { body?: unknown };
+  }> {
     const puter = await this.initPuterSDK();
     const messages = this.convertPromptToMessages(options.prompt);
-    const warnings: SharedV3Warning[] = [];
+    const warnings: LanguageModelV2CallWarning[] = [];
     const generateId = this.config.generateId;
     
     // Check if fallback is disabled for this request
@@ -532,7 +533,7 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
         warnings.push({
           type: 'other',
           message: `Model ${this.modelId} rate limited, used fallback: ${actualModelUsed}`,
-        } as SharedV3Warning);
+        });
       }
     } else {
       // Execute without fallback
@@ -540,13 +541,13 @@ export class PuterChatLanguageModel implements LanguageModelV3 {
       streamResponse = await puter.ai.chat(messages, sdkOptions) as AsyncIterable<PuterStreamChunk>;
     }
 
-    // Create a transform stream to convert Puter chunks to AI SDK format
+    // Create a transform stream to convert Puter chunks to AI SDK V2 format
     const self = this;
     let textId: string | null = null;
     let fullText = '';
     let finalUsage: PuterUsage | undefined;
 
-    const stream = new ReadableStream<LanguageModelV3StreamPart>({
+    const stream = new ReadableStream<LanguageModelV2StreamPart>({
       async start(controller) {
         // Emit stream-start
         controller.enqueue({

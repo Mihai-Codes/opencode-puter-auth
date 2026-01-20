@@ -38,8 +38,8 @@ describe('Puter AI SDK Provider', () => {
       expect(model.modelId).toBe('claude-opus-4-5');
     });
 
-    it('should return v3 specification version', () => {
-      expect(puterDefault.specificationVersion).toBe('v3');
+    it('should return v2 specification version', () => {
+      expect(puterDefault.specificationVersion).toBe('v2');
     });
 
     it('should be the same as the named puter export', () => {
@@ -69,7 +69,7 @@ describe('Puter AI SDK Provider', () => {
       expect(model).toBeInstanceOf(PuterChatLanguageModel);
       expect(model.modelId).toBe('claude-opus-4-5');
       expect(model.provider).toBe('puter');
-      expect(model.specificationVersion).toBe('v3');
+      expect(model.specificationVersion).toBe('v2');
     });
 
     it('should create a language model via languageModel method', () => {
@@ -138,7 +138,7 @@ describe('Puter AI SDK Provider', () => {
 
       const model = provider('claude-opus-4-5');
 
-      expect(model.specificationVersion).toBe('v3');
+      expect(model.specificationVersion).toBe('v2');
     });
 
     it('should return empty supportedUrls', () => {

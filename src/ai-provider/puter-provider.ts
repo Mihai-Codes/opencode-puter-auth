@@ -3,17 +3,20 @@
  * 
  * Factory function for creating Puter language models compatible with the AI SDK.
  * This enables Puter.com's FREE AI models to work as a proper provider in OpenCode.
+ * 
+ * Note: We use ProviderV2 because OpenCode's AI SDK 5.x only supports LanguageModelV2.
  */
 
-import type { ProviderV3 } from '@ai-sdk/provider';
+import type { ProviderV2 } from '@ai-sdk/provider';
 import { generateId, withoutTrailingSlash } from '@ai-sdk/provider-utils';
 import { PuterChatLanguageModel } from './puter-chat-language-model.js';
 import type { PuterChatSettings, PuterProviderConfig, PuterChatConfig } from './puter-chat-settings.js';
 
 /**
- * Puter provider interface extending ProviderV3.
+ * Puter provider interface extending ProviderV2.
+ * Note: We use V2 because OpenCode's AI SDK 5.x only supports LanguageModelV2.
  */
-export interface PuterProvider extends ProviderV3 {
+export interface PuterProvider extends ProviderV2 {
   /**
    * Create a Puter chat language model.
    * @param modelId - The model ID (e.g., 'claude-opus-4-5', 'gpt-4o')
@@ -162,8 +165,8 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
   provider.languageModel = createChatModel;
   provider.chat = createChatModel;
 
-  // ProviderV3 specification version
-  (provider as any).specificationVersion = 'v3';
+  // ProviderV2 specification version
+  (provider as any).specificationVersion = 'v2';
 
   // Puter only supports chat models, throw for unsupported types
   (provider as any).embeddingModel = () => {
@@ -233,7 +236,7 @@ export const puter: PuterProvider = new Proxy(
           getPuterInstance()[prop](...args);
       }
       if (prop === 'specificationVersion') {
-        return 'v3';
+        return 'v2';
       }
       if (prop === 'embeddingModel' || prop === 'imageModel') {
         return () => {
