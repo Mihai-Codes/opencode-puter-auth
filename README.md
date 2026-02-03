@@ -402,17 +402,30 @@ When a model returns HTTP 429 (rate limited) or 403 (forbidden), the plugin auto
 
 ### Default Fallback Models
 
-When rate limits are hit, these free models are tried in order:
+When rate limits are hit, these free models are tried in order (20 models across 5 tiers):
 
-| Priority | Model | Description |
-|----------|-------|-------------|
+> **Note:** OpenRouter free models have daily rate limits: 50 requests/day without credits, or 1000 requests/day with 10+ credits purchased on your OpenRouter account.
+
+| Tier | Model | Description |
+|------|-------|-------------|
 | 1 | `openrouter:xiaomi/mimo-v2-flash:free` | #1 on SWE-bench, Claude Sonnet 4.5 level |
-| 2 | `openrouter:deepseek/deepseek-r1-0528:free` | o1-level reasoning |
-| 3 | `openrouter:mistralai/devstral-2512:free` | Agentic coding specialist |
-| 4 | `openrouter:qwen/qwen3-coder:free` | 480B MoE coding model |
-| 5 | `openrouter:google/gemini-2.0-flash-exp:free` | 1M context, fast |
-| 6 | `openrouter:meta-llama/llama-4-maverick:free` | General purpose |
-| 7 | `openrouter:openai/gpt-oss-120b:free` | OpenAI open weights |
+| 1 | `openrouter:deepseek/deepseek-r1-0528:free` | o1-level reasoning |
+| 1 | `openrouter:mistralai/devstral-2512:free` | Agentic coding specialist |
+| 2 | `openrouter:qwen/qwen3-coder:free` | 480B MoE coding model |
+| 2 | `openrouter:mistralai/devstral-small-2505:free` | Smaller devstral |
+| 2 | `openrouter:qwen/qwen2.5-coder-32b-instruct:free` | Qwen 2.5 coder |
+| 3 | `openrouter:google/gemini-2.0-flash-exp:free` | 1M context, fast |
+| 3 | `openrouter:meta-llama/llama-4-maverick:free` | General purpose |
+| 3 | `openrouter:meta-llama/llama-4-scout:free` | General purpose |
+| 3 | `openrouter:meta-llama/llama-3.3-70b-instruct:free` | Llama 3.3 70B |
+| 4 | `openrouter:qwen/qwen3-235b-a22b:free` | Qwen 235B |
+| 4 | `openrouter:qwen/qwen3-30b-a3b:free` | Qwen 30B |
+| 4 | `openrouter:deepseek/deepseek-chat-v3.1:free` | DeepSeek v3.1 |
+| 4 | `openrouter:nvidia/llama-3.1-nemotron-ultra-253b-v1:free` | Nvidia Nemotron |
+| 5 | `openrouter:openai/gpt-oss-120b:free` | OpenAI open weights 120B |
+| 5 | `openrouter:openai/gpt-oss-20b:free` | OpenAI open weights 20B |
+| 5 | `openrouter:google/gemma-3-27b-it:free` | Google Gemma 3 |
+| 5 | `openrouter:mistralai/mistral-small-3.2-24b-instruct:free` | Mistral Small 3.2 |
 
 ### Configuration
 
