@@ -31,20 +31,39 @@ import type { Logger } from './logger.js';
 /**
  * Default fallback models - FREE OpenRouter models via Puter gateway.
  * Ordered by quality/capability (best first).
+ * 
+ * Note: OpenRouter free models have rate limits:
+ * - Without credits: 50 requests/day per model
+ * - With 10+ credits purchased: 1000 requests/day per model
  */
 export const DEFAULT_FALLBACK_MODELS = [
-  // Tier 1: Best free models (try these first)
+  // Tier 1: Best free coding models (try these first)
   'openrouter:xiaomi/mimo-v2-flash:free',       // 309B MoE, #1 SWE-bench
   'openrouter:deepseek/deepseek-r1-0528:free',  // 671B MoE, o1-level reasoning
   'openrouter:mistralai/devstral-2512:free',    // 123B, agentic coding
   
-  // Tier 2: Other quality free models
+  // Tier 2: Quality coding models
   'openrouter:qwen/qwen3-coder:free',           // 480B MoE coding model
-  'openrouter:google/gemini-2.0-flash-exp:free',// Google's experimental
+  'openrouter:mistralai/devstral-small-2505:free', // Smaller devstral
+  'openrouter:qwen/qwen2.5-coder-32b-instruct:free',
   
-  // Tier 3: Fallback free models
+  // Tier 3: General purpose free models
+  'openrouter:google/gemini-2.0-flash-exp:free',// Google's experimental
   'openrouter:meta-llama/llama-4-maverick:free',
+  'openrouter:meta-llama/llama-4-scout:free',
+  'openrouter:meta-llama/llama-3.3-70b-instruct:free',
+  
+  // Tier 4: More fallback options
+  'openrouter:qwen/qwen3-235b-a22b:free',       // Qwen 235B
+  'openrouter:qwen/qwen3-30b-a3b:free',         // Qwen 30B
+  'openrouter:deepseek/deepseek-chat-v3.1:free',
+  'openrouter:nvidia/llama-3.1-nemotron-ultra-253b-v1:free',
+  
+  // Tier 5: Last resort models
   'openrouter:openai/gpt-oss-120b:free',
+  'openrouter:openai/gpt-oss-20b:free',
+  'openrouter:google/gemma-3-27b-it:free',
+  'openrouter:mistralai/mistral-small-3.2-24b-instruct:free',
 ];
 
 /**
@@ -122,8 +141,35 @@ export class FallbackExhaustedError extends Error {
   public readonly attempts: FallbackAttempt[];
   
   constructor(attempts: FallbackAttempt[]) {
+    // Build a detailed error message
     const modelsTried = attempts.map(a => a.model).join(', ');
-    super(`All models exhausted. Tried: ${modelsTried}`);
+    
+    // Summarize error types
+    const errorSummary: Record<string, number> = {};
+    for (const attempt of attempts) {
+      if (!attempt.success && attempt.errorType) {
+        errorSummary[attempt.errorType] = (errorSummary[attempt.errorType] || 0) + 1;
+      }
+    }
+    
+    const summaryStr = Object.entries(errorSummary)
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(', ');
+    
+    // Provide actionable advice based on error types
+    let advice = '';
+    if (errorSummary['rate_limit'] || errorSummary['forbidden']) {
+      advice = '\n\nPossible causes:\n' +
+        '• OpenRouter free models have daily rate limits (50 req/day without credits)\n' +
+        '• Try waiting a few minutes, or use a different model provider\n' +
+        '• Run `npx opencode-puter-auth logout && npx opencode-puter-auth login` to refresh auth';
+    } else if (errorSummary['server_error']) {
+      advice = '\n\nThe AI provider is experiencing issues. Try again in a few minutes.';
+    } else if (errorSummary['auth_error']) {
+      advice = '\n\nAuthentication failed. Run `npx opencode-puter-auth login` to re-authenticate.';
+    }
+    
+    super(`All models exhausted. Tried: ${modelsTried}\nErrors: ${summaryStr}${advice}`);
     this.name = 'FallbackExhaustedError';
     this.attempts = attempts;
   }

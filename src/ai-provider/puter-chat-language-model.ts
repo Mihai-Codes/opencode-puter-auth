@@ -205,7 +205,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
           { enabled: true },
           this.logger
         );
-        this.logger.info(`Account rotation enabled with ${authManager.getAllAccounts().length} accounts`);
+        this.logger.debug(`Account rotation enabled with ${authManager.getAllAccounts().length} accounts`);
       }
       
       return this.accountRotationManager;
