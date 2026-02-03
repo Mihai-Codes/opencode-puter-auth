@@ -5,24 +5,6 @@
 [![codecov](https://codecov.io/gh/Mihai-Codes/opencode-puter-auth/graph/badge.svg)](https://codecov.io/gh/Mihai-Codes/opencode-puter-auth)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Current Status: API Access Blocked
-
-> **Important:** As of January 2026, direct REST API access to Puter's `/drivers/call` endpoint returns HTTP 403 Forbidden. This affects all external integrations, not just this plugin. I'm actively working with the Puter team to resolve this.
-
-**What works:**
-- OAuth authentication (login/logout)
-- Account management (multiple accounts, rotation)
-- Token storage and retrieval
-
-**What doesn't work yet:**
-- AI model calls (Claude, GPT, Gemini, etc.) - blocked at infrastructure level
-
-**Root cause:** Puter's API appears designed for their browser-based Puter.js SDK, which handles app context, origin validation, and their "User-Pays" consent flow. Direct REST API calls from CLI tools bypass this flow and are blocked.
-
-**Next steps:** I'm in contact with the Puter team to discuss developer API access options. This README documents the intended functionality once API access is enabled.
-
----
-
 > Access Claude Opus 4.5, Sonnet 4.5, GPT-5, Gemini, DeepSeek, and 500+ AI models through Puter.com OAuth. Includes 400+ FREE OpenRouter models. No API keys needed - free tier available with undocumented limits.
 
 Enable OpenCode to authenticate with [Puter.com](https://puter.com) via OAuth, giving you access to premium AI models through your Puter account. Ideal for app developers using the "User-Pays" model where each user covers their own AI costs.
