@@ -1,9 +1,10 @@
 {
   "name": "opencode-puter-auth",
-  "version": "1.0.60",
+  "version": "1.1.0",
   "description": "Puter.com OAuth plugin for OpenCode - Easy access to Claude, GPT, Gemini & 500+ AI models. No API keys needed, credit-based usage.",
   "bin": {
-    "puter-auth": "dist/cli.js"
+    "puter-auth": "dist/cli.js",
+    "puter-mcp": "dist/mcp-server.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -51,7 +52,11 @@
     "coding",
     "llm",
     "no-api-key",
-    "easy-setup"
+    "easy-setup",
+    "mcp",
+    "model-context-protocol",
+    "zed",
+    "claude-desktop"
   ],
   "engines": {
     "node": ">=20.0.0"
@@ -88,6 +93,7 @@
     "@ai-sdk/provider": "^3.0.3",
     "@ai-sdk/provider-utils": "^4.0.7",
     "@heyputer/puter.js": "^2.2.5",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "ai": "^6.0.57",
     "open": "^11.0.0",
     "xdg-basedir": "^5.1.0",

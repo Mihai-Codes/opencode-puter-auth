@@ -314,18 +314,23 @@ You can use ANY model from [OpenRouter's catalog](https://openrouter.ai/models) 
 
 Note: Non-free models will consume your Puter credits based on OpenRouter pricing.
 
-## Using with Zed IDE
+## MCP Server Mode (Zed IDE, Claude Desktop, etc.)
 
-> **Coming Soon!** Full Zed extension support is in development. See [#32](https://github.com/Mihai-Codes/opencode-puter-auth/issues/32).
+This plugin includes a built-in MCP (Model Context Protocol) server, allowing you to use Puter AI models in any MCP-compatible application like **Zed IDE**, **Claude Desktop**, **Continue**, and more.
 
-Zed IDE supports MCP (Model Context Protocol) servers, which allows you to use Puter AI models directly in Zed's Agent Panel.
+### Quick Setup
 
-### Quick Setup (MCP Server Mode)
+1. **Authenticate with Puter first:**
 
-Once MCP server mode is available ([#33](https://github.com/Mihai-Codes/opencode-puter-auth/issues/33)), add this to your Zed settings:
+```bash
+npx opencode-puter-auth login
+```
+
+2. **Add to your MCP client configuration:**
+
+**For Zed IDE** (`~/.config/zed/settings.json`):
 
 ```json
-// ~/.config/zed/settings.json
 {
   "context_servers": {
     "puter": {
@@ -338,27 +343,62 @@ Once MCP server mode is available ([#33](https://github.com/Mihai-Codes/opencode
 }
 ```
 
-### Authentication
+**For Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
-Before using with Zed, authenticate with Puter:
-
-```bash
-npx opencode-puter-auth login
+```json
+{
+  "mcpServers": {
+    "puter": {
+      "command": "npx",
+      "args": ["opencode-puter-auth", "serve", "--mcp"]
+    }
+  }
+}
 ```
 
-### Available Tools in Zed
+**For other MCP clients**, use the command:
+```bash
+npx opencode-puter-auth serve --mcp
+```
 
-After setup, you'll have access to these MCP tools in Zed's Agent Panel:
-- **puter-chat** - Chat with 500+ AI models (Claude, GPT, Gemini, etc.)
-- **puter-models** - List all available AI models
-- **puter-account** - Check your Puter account status
+Or if installed globally:
+```bash
+puter-mcp
+```
 
-### Why Use Puter with Zed?
+### Available MCP Tools
+
+After setup, you'll have access to these tools:
+
+| Tool | Description |
+|------|-------------|
+| **puter-chat** | Chat with 500+ AI models (Claude, GPT, Gemini, etc.). Supports system prompts, temperature, and max_tokens. |
+| **puter-models** | List all available AI models. Filter by provider (anthropic, openai, google). |
+| **puter-account** | Show account info including username and remaining credits. |
+
+### Example Usage in Zed
+
+Once configured, you can use the tools in Zed's Agent Panel:
+
+```
+Use puter-chat to ask Claude Opus 4.5 to explain this code
+```
+
+```
+Use puter-models to list all available Anthropic models
+```
+
+```
+Use puter-account to check my remaining credits
+```
+
+### Why Use Puter MCP?
 
 - **500+ AI Models** - Access Claude Opus 4.5, GPT-5.2, Gemini 2.5 Pro, DeepSeek R1, and more
 - **No API Keys** - Just sign in with your Puter account
 - **Free Tier** - Try before you buy with Puter's free credits
 - **400+ FREE OpenRouter Models** - Use `:free` models with no cost
+- **Works Everywhere** - Any MCP-compatible client (Zed, Claude Desktop, Continue, etc.)
 
 ## AI SDK Provider (Standalone Usage)
 

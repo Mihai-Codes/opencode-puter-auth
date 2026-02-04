@@ -5,10 +5,11 @@
  * Provides command-line authentication management for the Puter.com provider.
  * 
  * Usage:
- *   puter-auth login    - Authenticate with Puter.com
- *   puter-auth logout   - Remove all stored credentials
- *   puter-auth status   - Show current authentication status
- *   puter-auth --help   - Show this help message
+ *   puter-auth login       - Authenticate with Puter.com
+ *   puter-auth logout      - Remove all stored credentials
+ *   puter-auth status      - Show current authentication status
+ *   puter-auth serve --mcp - Start MCP server for Zed/Claude Desktop
+ *   puter-auth --help      - Show this help message
  */
 
 import { createPuterAuthManager } from './auth.js';
@@ -21,22 +22,38 @@ const HELP = `
 puter-auth - Puter.com Authentication for OpenCode
 
 USAGE:
-  puter-auth <command>
+  puter-auth <command> [options]
 
 COMMANDS:
-  login     Authenticate with Puter.com (opens browser)
-  logout    Remove all stored Puter credentials
-  status    Show current authentication status
-  help      Show this help message
+  login        Authenticate with Puter.com (opens browser)
+  logout       Remove all stored Puter credentials
+  status       Show current authentication status
+  serve        Start a server (use with --mcp for MCP protocol)
+  help         Show this help message
+
+OPTIONS:
+  --mcp        Start as MCP (Model Context Protocol) server for Zed/Claude Desktop
 
 EXAMPLES:
-  puter-auth login     # Start browser authentication
-  puter-auth status    # Check if authenticated
-  puter-auth logout    # Clear credentials
+  puter-auth login          # Start browser authentication
+  puter-auth status         # Check if authenticated
+  puter-auth logout         # Clear credentials
+  puter-auth serve --mcp    # Start MCP server for Zed IDE
 
 After authenticating, use Puter models in OpenCode:
   opencode -m puter/claude-sonnet-4-5 "Your prompt"
   opencode models puter  # List available models
+
+MCP Integration (Zed IDE, Claude Desktop):
+  Add to your MCP config:
+  {
+    "mcpServers": {
+      "puter": {
+        "command": "npx",
+        "args": ["opencode-puter-auth", "serve", "--mcp"]
+      }
+    }
+  }
 
 For more info: https://github.com/Mihai-Codes/opencode-puter-auth
 `;
@@ -100,6 +117,20 @@ async function main() {
         if (acc.lastUsed) {
           console.log(`      Last used: ${new Date(acc.lastUsed).toLocaleString()}`);
         }
+      }
+      break;
+    }
+
+    case 'serve': {
+      const isMcp = args.includes('--mcp');
+      if (isMcp) {
+        // Start MCP server
+        const { startMcpServer } = await import('./mcp-server.js');
+        await startMcpServer();
+      } else {
+        console.error('Unknown serve mode. Use --mcp for MCP server.');
+        console.log('Example: puter-auth serve --mcp');
+        process.exit(1);
       }
       break;
     }
