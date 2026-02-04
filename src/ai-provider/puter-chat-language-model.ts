@@ -770,6 +770,10 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     let fullText = '';
     let finalUsage: PuterUsage | undefined;
     let hasToolCalls = false;
+    
+    // Streaming timeout configuration (30s default, handles Puter SDK hanging on errors)
+    const STREAM_FIRST_CHUNK_TIMEOUT_MS = 30000;
+    const STREAM_CHUNK_TIMEOUT_MS = 60000; // Timeout between chunks
 
     const stream = new ReadableStream<LanguageModelV2StreamPart>({
       async start(controller) {
@@ -780,7 +784,36 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
         });
 
         try {
-          for await (const chunk of streamResponse) {
+          // Create an async iterator with timeout protection
+          const iterator = streamResponse[Symbol.asyncIterator]();
+          let isFirstChunk = true;
+          
+          const getNextWithTimeout = async (timeoutMs: number): Promise<IteratorResult<PuterStreamChunk>> => {
+            return new Promise(async (resolve, reject) => {
+              const timeoutId = setTimeout(() => {
+                reject(new Error(`Streaming timeout: No ${isFirstChunk ? 'initial response' : 'chunk'} received within ${timeoutMs / 1000}s`));
+              }, timeoutMs);
+              
+              try {
+                const result = await iterator.next();
+                clearTimeout(timeoutId);
+                resolve(result);
+              } catch (error) {
+                clearTimeout(timeoutId);
+                reject(error);
+              }
+            });
+          };
+          
+          // Iterate with timeout protection
+          while (true) {
+            const timeout = isFirstChunk ? STREAM_FIRST_CHUNK_TIMEOUT_MS : STREAM_CHUNK_TIMEOUT_MS;
+            const result = await getNextWithTimeout(timeout);
+            
+            if (result.done) break;
+            
+            const chunk = result.value;
+            isFirstChunk = false;
             // Handle reasoning content (for thinking models like Kimi K2.5)
             if (chunk.type === 'reasoning' && chunk.reasoning) {
               if (!reasoningId) {
@@ -891,7 +924,39 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
 
           controller.close();
         } catch (error) {
-          controller.error(error);
+          // Handle streaming timeout by probing for the actual error
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          
+          if (errorMsg.includes('Streaming timeout')) {
+            // Log the timeout
+            self.logger?.warn?.(`[puter-auth] ${errorMsg}`);
+            
+            // Emit an error text to the user instead of hanging
+            if (!textId) {
+              textId = generateId();
+              controller.enqueue({
+                type: 'text-start',
+                id: textId,
+              });
+            }
+            controller.enqueue({
+              type: 'text-delta',
+              id: textId,
+              delta: `⚠️ Streaming failed: ${errorMsg}. This may indicate a rate limit or API issue with Puter. Try again later or switch to a different model.`,
+            });
+            controller.enqueue({
+              type: 'text-end',
+              id: textId,
+            });
+            controller.enqueue({
+              type: 'finish',
+              usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+              finishReason: 'error',
+            });
+            controller.close();
+          } else {
+            controller.error(error);
+          }
         }
       },
     });
