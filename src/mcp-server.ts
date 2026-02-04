@@ -37,7 +37,7 @@ import { join } from 'path';
 // Configuration
 const CONFIG_DIR = join(homedir(), '.config', 'opencode');
 const SERVER_NAME = 'puter-mcp';
-const SERVER_VERSION = '1.1.0';
+const SERVER_VERSION = '1.1.1';
 
 // Logger that writes to stderr (never stdout!)
 const log = {
