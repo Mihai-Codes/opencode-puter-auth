@@ -314,6 +314,52 @@ You can use ANY model from [OpenRouter's catalog](https://openrouter.ai/models) 
 
 Note: Non-free models will consume your Puter credits based on OpenRouter pricing.
 
+## Using with Zed IDE
+
+> **Coming Soon!** Full Zed extension support is in development. See [#32](https://github.com/Mihai-Codes/opencode-puter-auth/issues/32).
+
+Zed IDE supports MCP (Model Context Protocol) servers, which allows you to use Puter AI models directly in Zed's Agent Panel.
+
+### Quick Setup (MCP Server Mode)
+
+Once MCP server mode is available ([#33](https://github.com/Mihai-Codes/opencode-puter-auth/issues/33)), add this to your Zed settings:
+
+```json
+// ~/.config/zed/settings.json
+{
+  "context_servers": {
+    "puter": {
+      "command": {
+        "path": "npx",
+        "args": ["opencode-puter-auth", "serve", "--mcp"]
+      }
+    }
+  }
+}
+```
+
+### Authentication
+
+Before using with Zed, authenticate with Puter:
+
+```bash
+npx opencode-puter-auth login
+```
+
+### Available Tools in Zed
+
+After setup, you'll have access to these MCP tools in Zed's Agent Panel:
+- **puter-chat** - Chat with 500+ AI models (Claude, GPT, Gemini, etc.)
+- **puter-models** - List all available AI models
+- **puter-account** - Check your Puter account status
+
+### Why Use Puter with Zed?
+
+- **500+ AI Models** - Access Claude Opus 4.5, GPT-5.2, Gemini 2.5 Pro, DeepSeek R1, and more
+- **No API Keys** - Just sign in with your Puter account
+- **Free Tier** - Try before you buy with Puter's free credits
+- **400+ FREE OpenRouter Models** - Use `:free` models with no cost
+
 ## AI SDK Provider (Standalone Usage)
 
 You can also use the Puter AI SDK provider directly in your own applications:
