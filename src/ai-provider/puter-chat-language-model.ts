@@ -42,6 +42,10 @@ interface PuterUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
   cached_tokens?: number;
+  // Alternative property names from Puter streaming
+  prompt?: number;
+  completion?: number;
+  input_cache_read?: number;
 }
 
 interface PuterToolCall {
@@ -87,6 +91,8 @@ interface PuterStreamChunk {
   id?: string;           // Tool call ID
   name?: string;         // Tool/function name
   input?: Record<string, unknown>; // Already parsed arguments
+  // Reasoning fields (for thinking models)
+  reasoning?: string;    // Reasoning/thinking content
 }
 
 // Puter SDK message format
@@ -508,10 +514,12 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
 
   /**
    * Map Puter usage to AI SDK V2 format (flat structure).
+   * Handles both property naming conventions from Puter.
    */
   private mapUsage(usage?: PuterUsage): LanguageModelV2Usage {
-    const inputTokens = usage?.prompt_tokens;
-    const outputTokens = usage?.completion_tokens;
+    // Puter uses different property names in streaming vs non-streaming
+    const inputTokens = usage?.prompt_tokens ?? usage?.prompt;
+    const outputTokens = usage?.completion_tokens ?? usage?.completion;
     return {
       inputTokens,
       outputTokens,
@@ -758,6 +766,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     // Create a transform stream to convert Puter chunks to AI SDK V2 format
     const self = this;
     let textId: string | null = null;
+    let reasoningId: string | null = null;
     let fullText = '';
     let finalUsage: PuterUsage | undefined;
     let hasToolCalls = false;
@@ -772,8 +781,33 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
 
         try {
           for await (const chunk of streamResponse) {
+            // Handle reasoning content (for thinking models like Kimi K2.5)
+            if (chunk.type === 'reasoning' && chunk.reasoning) {
+              if (!reasoningId) {
+                reasoningId = generateId();
+                controller.enqueue({
+                  type: 'reasoning-start',
+                  id: reasoningId,
+                });
+              }
+              controller.enqueue({
+                type: 'reasoning-delta',
+                id: reasoningId,
+                delta: chunk.reasoning,
+              });
+            }
+            
             // Handle text content (type === 'text' or just has .text property)
-            if (chunk.type === 'text' || (chunk.text && chunk.type !== 'tool_use')) {
+            if (chunk.type === 'text' || (chunk.text && chunk.type !== 'tool_use' && chunk.type !== 'reasoning')) {
+              // Close reasoning stream when text starts
+              if (reasoningId) {
+                controller.enqueue({
+                  type: 'reasoning-end',
+                  id: reasoningId,
+                });
+                reasoningId = null;
+              }
+              
               if (!textId) {
                 textId = generateId();
                 controller.enqueue({
@@ -793,6 +827,15 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
             // Puter sends tool_use chunks with: id, name, input (already parsed)
             if (chunk.type === 'tool_use' && chunk.id && chunk.name) {
               hasToolCalls = true;
+              
+              // Close any open reasoning stream before tool call
+              if (reasoningId) {
+                controller.enqueue({
+                  type: 'reasoning-end',
+                  id: reasoningId,
+                });
+                reasoningId = null;
+              }
               
               // Close any open text stream before tool call
               if (textId) {
@@ -823,6 +866,14 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
             }
           }
 
+          // Close reasoning stream if still open
+          if (reasoningId) {
+            controller.enqueue({
+              type: 'reasoning-end',
+              id: reasoningId,
+            });
+          }
+          
           // Close text stream if we had one
           if (textId) {
             controller.enqueue({
