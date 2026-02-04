@@ -83,6 +83,10 @@ interface PuterStreamChunk {
   type?: string;
   text?: string;
   usage?: PuterUsage;
+  // Tool use fields (for streaming tool calls)
+  id?: string;           // Tool call ID
+  name?: string;         // Tool/function name
+  input?: Record<string, unknown>; // Already parsed arguments
 }
 
 // Puter SDK message format
@@ -756,6 +760,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     let textId: string | null = null;
     let fullText = '';
     let finalUsage: PuterUsage | undefined;
+    let hasToolCalls = false;
 
     const stream = new ReadableStream<LanguageModelV2StreamPart>({
       async start(controller) {
@@ -767,8 +772,8 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
 
         try {
           for await (const chunk of streamResponse) {
-            // Handle text content
-            if (chunk.text) {
+            // Handle text content (type === 'text' or just has .text property)
+            if (chunk.type === 'text' || (chunk.text && chunk.type !== 'tool_use')) {
               if (!textId) {
                 textId = generateId();
                 controller.enqueue({
@@ -780,7 +785,35 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
               controller.enqueue({
                 type: 'text-delta',
                 id: textId,
-                delta: chunk.text,
+                delta: chunk.text!,
+              });
+            }
+
+            // Handle tool use (streaming tool calls from Puter)
+            // Puter sends tool_use chunks with: id, name, input (already parsed)
+            if (chunk.type === 'tool_use' && chunk.id && chunk.name) {
+              hasToolCalls = true;
+              
+              // Close any open text stream before tool call
+              if (textId) {
+                controller.enqueue({
+                  type: 'text-end',
+                  id: textId,
+                });
+                textId = null;
+              }
+              
+              // Emit complete tool-call (V2 format)
+              // input must be a stringified JSON
+              const argsJson = typeof chunk.input === 'string' 
+                ? chunk.input 
+                : JSON.stringify(chunk.input || {});
+              
+              controller.enqueue({
+                type: 'tool-call',
+                toolCallId: chunk.id,
+                toolName: chunk.name,
+                input: argsJson,
               });
             }
 
@@ -798,11 +831,11 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
             });
           }
 
-          // Emit finish
+          // Emit finish with appropriate finish reason
           controller.enqueue({
             type: 'finish',
             usage: self.mapUsage(finalUsage),
-            finishReason: self.mapFinishReason('stop'),
+            finishReason: self.mapFinishReason(hasToolCalls ? 'tool_calls' : 'stop'),
           });
 
           controller.close();

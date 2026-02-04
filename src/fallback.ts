@@ -135,6 +135,34 @@ export interface FallbackResult<T> {
 }
 
 /**
+ * Strip the `:free` suffix from a model ID.
+ * 
+ * OpenRouter uses `:free` suffix to indicate free tier models, but Puter
+ * may not have the `:free` variant available. This function strips the suffix
+ * so we can try the base model ID.
+ * 
+ * @example
+ * stripFreeSuffix('moonshotai/kimi-k2.5:free') // 'moonshotai/kimi-k2.5'
+ * stripFreeSuffix('openrouter:xiaomi/mimo-v2-flash:free') // 'openrouter:xiaomi/mimo-v2-flash'
+ * 
+ * @param modelId - Model ID that may have :free suffix
+ * @returns Model ID without :free suffix, or original if no suffix
+ */
+export function stripFreeSuffix(modelId: string): string {
+  if (modelId.endsWith(':free')) {
+    return modelId.slice(0, -5); // Remove ':free' (5 chars)
+  }
+  return modelId;
+}
+
+/**
+ * Check if a model ID has the :free suffix
+ */
+export function hasFreeSuffix(modelId: string): boolean {
+  return modelId.endsWith(':free');
+}
+
+/**
  * Error thrown when all models (primary + fallbacks) have failed
  */
 export class FallbackExhaustedError extends Error {
@@ -588,9 +616,6 @@ export class FallbackManager {
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorDesc = getErrorTypeDescription(errorType);
         
-        // Should we add to cooldown?
-        const shouldCooldown = errorType === 'rate_limit' || errorType === 'forbidden' || errorType === 'server_error';
-        
         attempts.push({
           model,
           success: false,
@@ -601,6 +626,62 @@ export class FallbackManager {
           durationMs,
         });
         
+        // ISSUE #26: If model not found and has :free suffix, try without it
+        if (errorType === 'not_found' && hasFreeSuffix(model)) {
+          const strippedModel = stripFreeSuffix(model);
+          
+          if (!this.quiet) {
+            logger?.info(`${progress} Model "${this.formatModelName(model)}" not found, trying without :free suffix...`);
+          }
+          
+          const retryStartTime = Date.now();
+          try {
+            const result = await operation(strippedModel);
+            const retryDurationMs = Date.now() - retryStartTime;
+            
+            if (!this.quiet) {
+              logger?.info(`${progress} ✓ Succeeded with stripped model: ${this.formatModelName(strippedModel)} (${formatDuration(retryDurationMs)})`);
+            }
+            
+            attempts.push({
+              model: strippedModel,
+              success: true,
+              durationMs: retryDurationMs,
+            });
+            
+            return {
+              result,
+              usedModel: strippedModel,
+              wasFallback: strippedModel !== primaryModel && stripFreeSuffix(primaryModel) !== strippedModel,
+              attempts,
+            };
+          } catch (retryError) {
+            const retryDurationMs = Date.now() - retryStartTime;
+            const retryErrorType = classifyError(retryError);
+            const retryHttpStatus = extractHttpStatus(retryError);
+            const retryErrorMessage = retryError instanceof Error ? retryError.message : String(retryError);
+            
+            attempts.push({
+              model: strippedModel,
+              success: false,
+              error: retryErrorMessage,
+              errorType: retryErrorType,
+              httpStatus: retryHttpStatus,
+              durationMs: retryDurationMs,
+            });
+            
+            if (!this.quiet) {
+              const statusStr = retryHttpStatus ? ` (${retryHttpStatus})` : '';
+              logger?.warn(`${progress} ✗ Stripped model also failed: ${this.formatModelName(strippedModel)}${statusStr}`);
+            }
+            
+            // Continue to next model in queue
+          }
+        }
+        
+        // Should we add to cooldown?
+        const shouldCooldown = errorType === 'rate_limit' || errorType === 'forbidden' || errorType === 'server_error';
+        
         if (shouldCooldown) {
           this.addToCooldown(model, errorMessage);
           const cooldownRemaining = formatDuration(this.cooldownMs);
@@ -610,8 +691,8 @@ export class FallbackManager {
             logger?.warn(`${progress} ✗ ${this.formatModelName(model)}: ${errorDesc}${statusStr} → cooldown ${cooldownRemaining}`);
           }
         } else {
-          // Non-cooldown error - log differently
-          if (!this.quiet) {
+          // Non-cooldown error - log differently (skip if we already logged for :free suffix)
+          if (!this.quiet && !(errorType === 'not_found' && hasFreeSuffix(model))) {
             const statusStr = httpStatus ? ` (${httpStatus})` : '';
             logger?.warn(`${progress} ✗ ${this.formatModelName(model)}: ${errorDesc}${statusStr}`);
           }
