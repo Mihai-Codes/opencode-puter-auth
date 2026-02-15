@@ -852,6 +852,16 @@ Increase timeout in `puter.json`:
 }
 ```
 
+## Issue and PR Triage Policy
+
+To keep the tracker useful and predictable, I follow this triage policy:
+
+- I keep issues open when they are actionable, reproducible, or clearly aligned with roadmap work.
+- I close duplicates and always link the canonical issue/PR.
+- I may close stale issues/PRs after inactivity, with a note that they can be reopened.
+- I use meta issues as roadmap indexes; child issues may stay open for execution tracking.
+- If new evidence appears (new repro, patch, maintainer interest), I reopen and continue.
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
