@@ -73,6 +73,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
+    "test:smoke:openai": "npm run build && node script/openai-proxy-smoke.mjs",
     "prepublishOnly": "npm run build",
     "dev": "tsc -p tsconfig.build.json --watch"
   },

@@ -32,6 +32,7 @@ export { default } from './ai-provider/index.js';
 
 // AI SDK Provider exports - ONLY functions
 export { createPuter, puter } from './ai-provider/index.js';
+export { startOpenAIProxy } from './openai-proxy.js';
 
 // Type exports are fine - they're compile-time only and don't exist at runtime
 export type { PuterProvider, PuterChatSettings, PuterProviderConfig, PuterChatConfig } from './ai-provider/index.js';

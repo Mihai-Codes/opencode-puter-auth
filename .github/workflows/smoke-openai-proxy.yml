@@ -1,0 +1,86 @@
+name: OpenAI Proxy Smoke (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      port:
+        description: "Proxy port for smoke test"
+        required: false
+        default: "11888"
+      username:
+        description: "Puter username label used in temp auth file"
+        required: false
+        default: "github-actions"
+      use_api_key_gate:
+        description: "Enable API key gate during smoke test"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate required secret
+        env:
+          PUTER_AUTH_TOKEN: ${{ secrets.PUTER_AUTH_TOKEN }}
+        run: |
+          if [ -z "$PUTER_AUTH_TOKEN" ]; then
+            echo "Missing required secret: PUTER_AUTH_TOKEN"
+            echo "Set it in: Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
+      - name: Create Puter auth file for smoke run
+        env:
+          PUTER_AUTH_TOKEN: ${{ secrets.PUTER_AUTH_TOKEN }}
+          INPUT_USERNAME: ${{ inputs.username }}
+        run: |
+          mkdir -p "$HOME/.config/opencode"
+          NOW_MS=$(node -e "console.log(Date.now())")
+          cat > "$HOME/.config/opencode/puter-accounts.json" <<EOF
+          {
+            "version": 1,
+            "accounts": [
+              {
+                "username": "${INPUT_USERNAME}",
+                "authToken": "${PUTER_AUTH_TOKEN}",
+                "addedAt": ${NOW_MS},
+                "isTemporary": false
+              }
+            ],
+            "activeIndex": 0
+          }
+          EOF
+
+      - name: Run smoke test (no API key gate)
+        if: ${{ !inputs.use_api_key_gate }}
+        env:
+          PUTER_OPENAI_PROXY_PORT: ${{ inputs.port }}
+        run: npm run test:smoke:openai
+
+      - name: Run smoke test (with API key gate)
+        if: ${{ inputs.use_api_key_gate }}
+        env:
+          PUTER_OPENAI_PROXY_PORT: ${{ inputs.port }}
+          PUTER_OPENAI_PROXY_API_KEY: ${{ secrets.PUTER_OPENAI_PROXY_API_KEY }}
+        run: |
+          if [ -z "$PUTER_OPENAI_PROXY_API_KEY" ]; then
+            echo "use_api_key_gate=true requires secret PUTER_OPENAI_PROXY_API_KEY"
+            exit 1
+          fi
+          npm run test:smoke:openai

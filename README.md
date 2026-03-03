@@ -400,6 +400,120 @@ Use puter-account to check my remaining credits
 - **400+ FREE OpenRouter Models** - Use `:free` models with no cost
 - **Works Everywhere** - Any MCP-compatible client (Zed, Claude Desktop, Continue, etc.)
 
+## OpenAI-Compatible Proxy Mode
+
+Need compatibility with tools that expect OpenAI's `v1` endpoints (e.g. local wrappers, scripts, SDK clients)? Run the built-in OpenAI-compatible proxy.
+
+### Start the Proxy
+
+Authenticate first:
+
+```bash
+npx opencode-puter-auth login
+```
+
+Start proxy on the default port (`11434`):
+
+```bash
+npx opencode-puter-auth serve --openai
+```
+
+Or choose a custom port:
+
+```bash
+npx opencode-puter-auth serve --openai --port 8080
+```
+
+### Optional API Key Gate (Recommended on shared networks)
+
+You can require an API key for all proxy requests:
+
+```bash
+# Option 1: CLI flag
+npx opencode-puter-auth serve --openai --api-key my-local-secret
+
+# Option 2: Environment variable
+PUTER_OPENAI_PROXY_API_KEY=my-local-secret npx opencode-puter-auth serve --openai
+```
+
+Accepted auth headers:
+- `Authorization: Bearer <key>`
+- `x-api-key: <key>`
+
+### Supported Endpoints
+
+- `GET /health`
+- `GET /v1/models`
+- `POST /v1/chat/completions` (stream + non-stream)
+
+### curl Examples
+
+List models:
+
+```bash
+curl http://127.0.0.1:11434/v1/models
+```
+
+Chat completion (non-stream):
+
+```bash
+curl http://127.0.0.1:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-5",
+    "messages": [
+      {"role": "user", "content": "Write a TypeScript debounce function."}
+    ]
+  }'
+```
+
+Chat completion (streaming):
+
+```bash
+curl http://127.0.0.1:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -N \
+  -d '{
+    "model": "gpt-4o",
+    "stream": true,
+    "messages": [
+      {"role": "user", "content": "Explain HTTP keep-alive in two sentences."}
+    ]
+  }'
+```
+
+### Local Smoke Test (Real Auth)
+
+Run a quick local QA check that boots the proxy and verifies `GET /health` and `GET /v1/models`:
+
+```bash
+npm run test:smoke:openai
+```
+
+If you use API-key mode:
+
+```bash
+PUTER_OPENAI_PROXY_API_KEY=my-local-secret npm run test:smoke:openai
+```
+
+If not logged in yet, the smoke test fails with a hint to run:
+
+```bash
+npx opencode-puter-auth login
+```
+
+### GitHub Actions Smoke (Manual)
+
+There is also a manual workflow at `.github/workflows/smoke-openai-proxy.yml`.
+
+Required repository secret:
+- `PUTER_AUTH_TOKEN` (a valid Puter auth token)
+
+Optional (only if you enable API-key gate in workflow input):
+- `PUTER_OPENAI_PROXY_API_KEY`
+
+Run it from **Actions -> OpenAI Proxy Smoke (Manual) -> Run workflow**.
+
 ## AI SDK Provider (Standalone Usage)
 
 You can also use the Puter AI SDK provider directly in your own applications:

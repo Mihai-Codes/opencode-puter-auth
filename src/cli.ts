@@ -9,6 +9,7 @@
  *   puter-auth logout      - Remove all stored credentials
  *   puter-auth status      - Show current authentication status
  *   puter-auth serve --mcp - Start MCP server for Zed/Claude Desktop
+ *   puter-auth serve --openai --port 11434 - Start OpenAI-compatible proxy
  *   puter-auth --help      - Show this help message
  */
 
@@ -33,12 +34,17 @@ COMMANDS:
 
 OPTIONS:
   --mcp        Start as MCP (Model Context Protocol) server for Zed/Claude Desktop
+  --openai     Start OpenAI-compatible HTTP proxy
+  --port N     Port for --openai mode (default: 11434)
+  --api-key K  Require API key (or use PUTER_OPENAI_PROXY_API_KEY)
 
 EXAMPLES:
   puter-auth login          # Start browser authentication
   puter-auth status         # Check if authenticated
   puter-auth logout         # Clear credentials
   puter-auth serve --mcp    # Start MCP server for Zed IDE
+  puter-auth serve --openai --port 11434
+  puter-auth serve --openai --api-key my-secret
 
 After authenticating, use Puter models in OpenCode:
   opencode -m puter/claude-sonnet-4-5 "Your prompt"
@@ -123,13 +129,33 @@ async function main() {
 
     case 'serve': {
       const isMcp = args.includes('--mcp');
+      const isOpenAI = args.includes('--openai');
       if (isMcp) {
         // Start MCP server
         const { startMcpServer } = await import('./mcp-server.js');
         await startMcpServer();
+      } else if (isOpenAI) {
+        const portFlagIndex = args.indexOf('--port');
+        const portValue = portFlagIndex >= 0 ? Number(args[portFlagIndex + 1]) : undefined;
+        const apiKeyFlagIndex = args.indexOf('--api-key');
+        const apiKeyValue = apiKeyFlagIndex >= 0 ? args[apiKeyFlagIndex + 1] : undefined;
+        if (portValue !== undefined && (!Number.isInteger(portValue) || portValue <= 0 || portValue > 65535)) {
+          console.error('Invalid --port value. Use an integer between 1 and 65535.');
+          process.exit(1);
+        }
+        if (apiKeyFlagIndex >= 0 && (!apiKeyValue || apiKeyValue.startsWith('--'))) {
+          console.error('Invalid --api-key value. Provide a non-empty key.');
+          process.exit(1);
+        }
+
+        const { startOpenAIProxy } = await import('./openai-proxy.js');
+        await startOpenAIProxy({
+          port: portValue,
+          apiKey: apiKeyValue,
+        });
       } else {
-        console.error('Unknown serve mode. Use --mcp for MCP server.');
-        console.log('Example: puter-auth serve --mcp');
+        console.error('Unknown serve mode. Use --mcp or --openai.');
+        console.log('Examples: puter-auth serve --mcp | puter-auth serve --openai --port 11434');
         process.exit(1);
       }
       break;
