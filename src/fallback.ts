@@ -169,35 +169,61 @@ export class FallbackExhaustedError extends Error {
   public readonly attempts: FallbackAttempt[];
   
   constructor(attempts: FallbackAttempt[]) {
-    // Build a detailed error message
     const modelsTried = attempts.map(a => a.model).join(', ');
-    
-    // Summarize error types
+
     const errorSummary: Record<string, number> = {};
     for (const attempt of attempts) {
       if (!attempt.success && attempt.errorType) {
         errorSummary[attempt.errorType] = (errorSummary[attempt.errorType] || 0) + 1;
       }
     }
-    
+
     const summaryStr = Object.entries(errorSummary)
       .map(([type, count]) => `${type}: ${count}`)
       .join(', ');
-    
-    // Provide actionable advice based on error types
-    let advice = '';
+
+    const failedAttempts = attempts.filter(a => !a.success);
+    const recentFailures = failedAttempts
+      .slice(-5)
+      .map((attempt) => {
+        const status = attempt.httpStatus ? ` (${attempt.httpStatus})` : '';
+        const reason = attempt.errorType ?? 'unknown';
+        return `- ${attempt.model}${status}: ${reason}`;
+      })
+      .join('\n');
+
+    let advice = '\n\nWhat to try next:\n';
     if (errorSummary['rate_limit'] || errorSummary['forbidden']) {
-      advice = '\n\nPossible causes:\n' +
-        '• OpenRouter free models have daily rate limits (50 req/day without credits)\n' +
-        '• Try waiting a few minutes, or use a different model provider\n' +
-        '• Run `npx opencode-puter-auth logout && npx opencode-puter-auth login` to refresh auth';
+      advice +=
+        '1) Wait a few minutes and retry (rate limits/cooldowns may reset).\n' +
+        '2) Switch away from crowded free models or `:free` variants.\n' +
+        '3) Check credits/usage with `puter-usage` or in Puter dashboard.\n' +
+        '4) Re-authenticate: `puter-auth login`.';
     } else if (errorSummary['server_error']) {
-      advice = '\n\nThe AI provider is experiencing issues. Try again in a few minutes.';
+      advice +=
+        '1) Provider appears unstable (5xx).\n' +
+        '2) Retry shortly; keep same prompt/model first.\n' +
+        '3) If persistent, switch model/provider temporarily.';
     } else if (errorSummary['auth_error']) {
-      advice = '\n\nAuthentication failed. Run `npx opencode-puter-auth login` to re-authenticate.';
+      advice +=
+        '1) Re-authenticate: `puter-auth login`.\n' +
+        '2) Verify the active account/token is correct.\n' +
+        '3) If using CI, check `PUTER_AUTH_TOKEN` secret.';
+    } else {
+      advice +=
+        '1) Retry with a shorter prompt/context.\n' +
+        '2) Try a different model.\n' +
+        '3) Enable debug logs for full provider errors.';
     }
-    
-    super(`All models exhausted. Tried: ${modelsTried}\nErrors: ${summaryStr}${advice}`);
+
+    const message =
+      'All fallback models were exhausted.\n' +
+      `Models tried: ${modelsTried}\n` +
+      `Error summary: ${summaryStr || 'unknown'}\n` +
+      (recentFailures ? `Recent failures:\n${recentFailures}` : '') +
+      advice;
+
+    super(message);
     this.name = 'FallbackExhaustedError';
     this.attempts = attempts;
   }
@@ -231,10 +257,16 @@ export function isRateLimitError(error: unknown): boolean {
     'too many requests',
     'quota exceeded',
     'quota_exceeded',
+    'insufficient_quota',
+    'billing_hard_limit_reached',
     'limit exceeded',
     'request limit',
     'credits exhausted',
     'insufficient credits',
+    'resource exhausted',
+    'usage-limited-chat',
+    'reached your ai usage limit',
+    'monthly allowance',
     'usage limit',
     'capacity',
     'overloaded',

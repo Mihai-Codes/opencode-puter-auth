@@ -37,6 +37,9 @@ describe('isRateLimitError', () => {
     expect(isRateLimitError(new Error('Too many requests, please try again later'))).toBe(true);
     expect(isRateLimitError(new Error('Quota exceeded for this model'))).toBe(true);
     expect(isRateLimitError(new Error('Credits exhausted'))).toBe(true);
+    expect(isRateLimitError(new Error('usage-limited-chat: Permission denied'))).toBe(true);
+    expect(isRateLimitError(new Error('You have reached your AI usage limit'))).toBe(true);
+    expect(isRateLimitError(new Error('insufficient_quota'))).toBe(true);
   });
 
   it('should not detect non-rate-limit errors', () => {
@@ -690,6 +693,7 @@ describe('FallbackExhaustedError', () => {
     expect(error.attempts).toEqual(attempts);
     expect(error.message).toContain('model-a');
     expect(error.message).toContain('model-b');
+    expect(error.message).toContain('What to try next');
     expect(error.name).toBe('FallbackExhaustedError');
   });
 });
