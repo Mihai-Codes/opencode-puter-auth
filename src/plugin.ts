@@ -813,9 +813,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
     // EVENT HANDLER
     // ========================================
     async event({ event }) {
-      if (pluginConfig.log_enabled === true && pluginConfig.debug) {
-        console.log(`[puter-auth] Event: ${event.type}`);
-      }
+      void event;
     },
   };
 };
