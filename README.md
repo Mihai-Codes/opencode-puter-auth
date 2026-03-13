@@ -33,7 +33,7 @@ Puter.com uses a **"User-Pays" model**:
 > **Important Reality Check:** Puter's marketing says "Free, Unlimited" but this is misleading. In practice:
 > - Free tier limits exist but are **undocumented** ([GitHub Issue #1704](https://github.com/HeyPuter/puter/issues/1704))
 > - Users report limits trigger after "minimal usage" ([GitHub Issue #1291](https://github.com/HeyPuter/puter/issues/1291))
-> - When limits hit, you'll see: `"usage-limited-chat": Permission denied`
+> - When limits hit, you'll see errors like: `usage-limited-chat` or `insufficient_funds` (HTTP 402)
 
 ## Understanding the "User-Pays" Model
 
@@ -50,7 +50,7 @@ Puter.com uses a **"User-Pays" model**:
 | **Pricing** | "Free, Unlimited" | Free tier exists but has limits |
 | **Limits** | "No usage restrictions" | Undocumented limits trigger unexpectedly |
 | **Documentation** | Not specified | Limits are not publicly documented |
-| **When exceeded** | Not mentioned | Error: `usage-limited-chat: Permission denied` |
+| **When exceeded** | Not mentioned | Error: `usage-limited-chat` or `insufficient_funds` (HTTP 402) |
 
 **Estimated free tier:** ~100 requests/day (unconfirmed, based on third-party reports)
 
@@ -607,6 +607,10 @@ Create `~/.config/opencode/puter.json` for advanced settings:
 
 Enable response caching to avoid repeated requests for identical prompts (non-streaming only):
 
+Notes:
+- Streaming requests bypass the cache entirely.
+- Use deterministic settings (fixed temperature, max_tokens) if you want consistent cache hits.
+
 ```json
 {
   "cache_enabled": true,
@@ -627,6 +631,7 @@ puter-auth stats gpt-5.2
 ## Automatic Model Fallback
 
 When a model returns HTTP 429 (rate limited) or 403 (forbidden), the plugin automatically tries free OpenRouter models. This keeps your workflow running even when premium models are temporarily unavailable.
+Fallback does **not** run for billing/auth errors (401/402) since it won't help if the account has no credits.
 
 ### How It Works
 
@@ -877,6 +882,9 @@ Use puter-chat with:
 
 For OpenAI proxy clients, use `image_url` and `file` content parts (with `puter_path` for PDFs).
 
+PDF note:
+- The OpenAI proxy does not accept local file paths. Upload the PDF to Puter storage and use its `puter_path`.
+
 ## Comparison: Puter vs Antigravity vs Alternatives
 
 | Feature | Puter | Antigravity | Netlify AI Gateway |
@@ -986,9 +994,9 @@ This is a known issue affecting all users. See [Current Status](#current-status-
 
 I'm working with the Puter team to resolve this. In the meantime, consider using [Antigravity](https://github.com/NoeFabris/opencode-antigravity-auth) or direct API keys for AI access.
 
-### "usage-limited-chat: Permission denied" or "You have reached your AI usage limit"
+### "usage-limited-chat" / "insufficient_funds" (HTTP 402) / "You have reached your AI usage limit"
 
-This means your Puter account has exhausted its free tier credits. Despite Puter's "Free Unlimited" marketing, limits do exist.
+This means your Puter account has exhausted its free tier credits. Puter may return `usage-limited-chat`, `insufficient_funds`, or a message like "Available funding is insufficient for this request." Despite Puter's "Free Unlimited" marketing, limits do exist.
 
 **Solutions:**
 1. **Switch to FREE OpenRouter models** - Use `puter/openrouter:xiaomi/mimo-v2-flash:free` or other `:free` models (see OpenRouter section above)

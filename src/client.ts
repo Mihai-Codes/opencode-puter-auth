@@ -39,8 +39,12 @@ function getErrorHint(status: number | undefined, errorText: string): string | u
     return 'Not authenticated or token expired. Run `puter-auth login` to refresh credentials.';
   }
 
+  if (status === 402) {
+    return 'Insufficient credits/funding. Add credits or switch accounts.';
+  }
+
   if (status === 403) {
-    if (text.includes('usage-limited') || text.includes('permission denied') || text.includes('credits') || text.includes('exhaust')) {
+    if (text.includes('usage-limited') || text.includes('permission denied') || text.includes('credits') || text.includes('exhaust') || text.includes('insufficient') || text.includes('funding')) {
       return 'Account likely out of credits. Check usage with `puter-usage` or switch accounts.';
     }
     return 'Access forbidden. Check account permissions and usage limits.';
@@ -659,6 +663,14 @@ export class PuterClient {
         }
 
         const data = await response.json();
+        // Some Puter API responses return HTTP 200 with { success: false, error: {...} }
+        if (data && data.success === false && data.error) {
+          const status = typeof data.error.status === 'number' ? data.error.status : response.status;
+          const message = typeof data.error.message === 'string'
+            ? data.error.message
+            : JSON.stringify(data.error);
+          throw new Error(formatApiError('Puter API error', status, message));
+        }
         return data;
       } finally {
         clearTimeout(timeoutId);

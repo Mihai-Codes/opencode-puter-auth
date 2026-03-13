@@ -140,6 +140,16 @@ export interface PuterChatConfig {
   provider: string;
 
   /**
+   * Enable debug logging.
+   */
+  debug?: boolean;
+
+  /**
+   * Suppress non-error logs.
+   */
+  quiet_mode?: boolean;
+
+  /**
    * Base URL for API calls.
    */
   baseURL: string;

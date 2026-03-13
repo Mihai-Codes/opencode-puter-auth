@@ -97,6 +97,16 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
     ...options.metrics,
   };
 
+  const fallbackConfig = {
+    enabled: localConfig.fallback_enabled,
+    fallbackModels: localConfig.fallback_models,
+    cooldownMs: localConfig.fallback_cooldown_ms,
+    // Tie verbose fallback logs to debug mode by default.
+    verbose: localConfig.debug ?? false,
+    quiet: localConfig.quiet_mode ?? false,
+    ...options.fallback,
+  };
+
   /**
    * Get auth token dynamically - either from options or from auth file.
    * This allows OpenCode to use the plugin's auth system.
@@ -150,12 +160,14 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
    */
   const createChatConfig = (): PuterChatConfig => ({
     provider: 'puter',
+    debug: localConfig.debug ?? false,
+    quiet_mode: localConfig.quiet_mode ?? false,
     baseURL,
     timeout,
     headers: getHeaders,
     fetch: fetchFn,
     generateId: generateIdFn,
-    fallback: options.fallback,
+    fallback: fallbackConfig,
     cache: cacheConfig,
     metrics: metricsConfig,
   });

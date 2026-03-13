@@ -82,6 +82,7 @@ export type FallbackErrorType =
   | 'auth_error'      // 401 - Authentication issue
   | 'not_found'       // 404 - Model not found
   | 'context_length'  // Context too long for model
+  | 'payment_required'// 402 - Insufficient funds
   | 'unknown';        // Other errors
 
 /**
@@ -328,6 +329,7 @@ export function classifyError(error: unknown): FallbackErrorType {
       case 403: return 'forbidden';
       case 401: return 'auth_error';
       case 404: return 'not_found';
+      case 402: return 'payment_required';
       case 500:
       case 502:
       case 503:
@@ -346,6 +348,10 @@ export function classifyError(error: unknown): FallbackErrorType {
     return 'context_length';
   }
   
+  if (message.includes('insufficient funds') || message.includes('payment required') || message.includes('insufficient_funds') || message.includes('funding is insufficient')) {
+    return 'payment_required';
+  }
+
   if (message.includes('auth') || message.includes('unauthorized') || message.includes('invalid key') || message.includes('invalid token')) {
     return 'auth_error';
   }
@@ -373,6 +379,7 @@ export function getErrorTypeDescription(errorType: FallbackErrorType): string {
     case 'auth_error': return 'Auth Error';
     case 'not_found': return 'Not Found';
     case 'context_length': return 'Context Too Long';
+    case 'payment_required': return 'Payment Required';
     case 'unknown': return 'Error';
   }
 }
@@ -647,6 +654,15 @@ export class FallbackManager {
         const httpStatus = extractHttpStatus(error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorDesc = getErrorTypeDescription(errorType);
+
+        // If the error is due to billing/auth, stop immediately (fallback won't help).
+        if (errorType === 'payment_required' || errorType === 'auth_error') {
+          if (!this.quiet) {
+            const statusStr = httpStatus ? ` (${httpStatus})` : '';
+            logger?.error(`Primary request failed: ${errorDesc}${statusStr}`, error);
+          }
+          throw error;
+        }
         
         attempts.push({
           model,

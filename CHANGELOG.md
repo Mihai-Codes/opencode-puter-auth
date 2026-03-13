@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Handle Puter API responses that return HTTP 200 with `{ success: false, error: ... }` by surfacing a proper error
+- Treat HTTP 402 / `insufficient_funds` as a billing error with a clear hint
+- Stop fallback retries for billing/auth errors (401/402) since fallback cannot succeed without credits
+
+### Documentation
+- Clarify `usage-limited-chat` / `insufficient_funds` errors and fallback behavior in README
 
 ## [1.0.2] - 2026-01-15
 

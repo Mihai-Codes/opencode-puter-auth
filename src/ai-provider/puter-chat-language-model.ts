@@ -220,7 +220,10 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     this.fallbackManager = getGlobalFallbackManager(config.fallback);
     
     // Create logger (uses console by default, can be configured)
-    this.logger = createLogger({ debug: false }); // Will be quiet unless debug enabled
+    this.logger = createLogger({
+      debug: config.debug ?? false,
+      quiet_mode: config.quiet_mode ?? false,
+    });
 
     this.responseCache = new ResponseCache<CachedGenerateResult>({
       enabled: config.cache?.enabled ?? false,
