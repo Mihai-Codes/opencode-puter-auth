@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import { config as xdgConfig, cache as xdgCache } from 'xdg-basedir';
+import { xdgConfig, xdgCache } from 'xdg-basedir';
 
 export function getConfigDir(): string {
   if (xdgConfig) {

@@ -17,7 +17,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { PuterClient } from './client.js';
 import { createPuterAuthManager, type PuterAuthManager } from './auth.js';
-import type { PuterConfig, PuterChatMessage, PuterAccount } from './types.js';
+import type { PuterConfig, PuterChatMessage, PuterAccount, PuterContentPart } from './types.js';
 import { loadPuterConfig } from './config.js';
 import { getConfigDir } from './paths.js';
 import { ModelMetricsStore } from './metrics.js';
@@ -614,8 +614,8 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
           }
           
           const model = args.model || 'claude-sonnet-4-5';
-          const contentParts: PuterChatMessage['content'] = (() => {
-            const parts = [];
+          const contentParts = (() => {
+            const parts: PuterContentPart[] = [];
             if (args.message) {
               parts.push({ type: 'text', text: args.message });
             }

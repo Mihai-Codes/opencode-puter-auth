@@ -134,6 +134,11 @@ export interface PuterChatStreamChunk {
   text?: string;
   reasoning?: string;
   tool_calls?: PuterToolCall[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
   finish_reason?: string;
   done?: boolean;
 }
