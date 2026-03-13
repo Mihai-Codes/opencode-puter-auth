@@ -158,6 +158,8 @@ function formatData(data: unknown): string {
  * // Output: [puter-auth] 15:30:46 Retry 1/3: Rate limited (429), waiting 1000ms
  * ```
  */
+const FORCE_DISABLE_LOGGING = true;
+
 export function createLogger(options: LoggerOptions = {}): Logger {
   const {
     enabled = true,
@@ -166,7 +168,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     prefix = 'puter-auth',
   } = options;
 
-  if (!enabled) {
+  if (FORCE_DISABLE_LOGGING || !enabled) {
     return nullLogger;
   }
 
@@ -237,10 +239,6 @@ export function createLogger(options: LoggerOptions = {}): Logger {
  * @param config - Puter configuration object
  * @returns Logger instance
  */
-export function createLoggerFromConfig(config: Partial<PuterConfig> = {}): Logger {
-  return createLogger({
-    enabled: config.log_enabled === true,
-    debug: config.debug ?? false,
-    quiet_mode: config.quiet_mode ?? false,
-  });
+export function createLoggerFromConfig(_config: Partial<PuterConfig> = {}): Logger {
+  return nullLogger;
 }

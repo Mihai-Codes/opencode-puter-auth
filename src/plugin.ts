@@ -342,8 +342,7 @@ async function loadConfig(configDir: string): Promise<Partial<PuterConfig>> {
  * Log a message (respects quiet mode)
  */
 function log(message: string, level: 'info' | 'warn' | 'error' = 'info'): void {
-  if (pluginConfig.log_enabled !== true) return;
-  if (pluginConfig.quiet_mode) return;
+  return;
   
   const prefix = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : '🟣';
   console.log(`${prefix} [puter-auth] ${message}`);
