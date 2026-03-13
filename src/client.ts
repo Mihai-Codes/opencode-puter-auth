@@ -23,6 +23,47 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 1000;
 const DEFAULT_CACHE_TTL = 300000; // 5 minutes
 
+function normalizeErrorText(errorText: string): string {
+  const trimmed = errorText?.trim();
+  return trimmed ? trimmed : 'Unknown error';
+}
+
+function getErrorHint(status: number | undefined, errorText: string): string | undefined {
+  const text = errorText.toLowerCase();
+
+  if (status === 401) {
+    return 'Not authenticated or token expired. Run `puter-auth login` to refresh credentials.';
+  }
+
+  if (status === 403) {
+    if (text.includes('usage-limited') || text.includes('permission denied') || text.includes('credits') || text.includes('exhaust')) {
+      return 'Account likely out of credits. Check usage with `puter-usage` or switch accounts.';
+    }
+    return 'Access forbidden. Check account permissions and usage limits.';
+  }
+
+  if (status === 429 || text.includes('rate limit')) {
+    return 'Rate limited. Wait and retry, or enable account rotation.';
+  }
+
+  if (status && status >= 500) {
+    return 'Puter service error. Retry later.';
+  }
+
+  if (status === 404) {
+    return 'Endpoint not found. Make sure you are on the latest version.';
+  }
+
+  return undefined;
+}
+
+function formatApiError(prefix: string, status: number, errorText: string): string {
+  const cleanText = normalizeErrorText(errorText);
+  const base = `${prefix} (${status}): ${cleanText}`;
+  const hint = getErrorHint(status, cleanText);
+  return hint ? `${base} Hint: ${hint}` : base;
+}
+
 /**
  * Model cache entry
  */
@@ -101,7 +142,7 @@ export class PuterClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to get user-app-token (${response.status}): ${errorText}`);
+        throw new Error(formatApiError('Failed to get user-app-token', response.status, errorText));
       }
 
       const data = await response.json();
@@ -340,7 +381,7 @@ export class PuterClient {
           if (res.status === 403) {
             this.invalidateUserAppTokenCache();
           }
-          throw new Error(`Puter API error (${res.status}): ${errorText}`);
+          throw new Error(formatApiError('Puter API error', res.status, errorText));
         }
 
         return res;
@@ -547,7 +588,7 @@ export class PuterClient {
           if (response.status === 403) {
             this.invalidateUserAppTokenCache();
           }
-          throw new Error(`Puter API error (${response.status}): ${errorText}`);
+          throw new Error(formatApiError('Puter API error', response.status, errorText));
         }
 
         const data = await response.json();
@@ -615,7 +656,7 @@ export class PuterClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to get monthly usage (${response.status}): ${errorText}`);
+        throw new Error(formatApiError('Failed to get monthly usage', response.status, errorText));
       }
 
       const data = await response.json();

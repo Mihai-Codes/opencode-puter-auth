@@ -166,7 +166,17 @@ puter-auth status
 # Or: npx opencode-puter-auth status
 ```
 
-4. **Use it:**
+4. **Check usage (optional):**
+
+```bash
+puter-auth usage
+# Or: npx opencode-puter-auth usage
+
+# Show usage for all accounts
+puter-auth usage --all
+```
+
+5. **Use it:**
 
 ```bash
 opencode --model=puter/claude-opus-4-5
@@ -803,6 +813,7 @@ The plugin adds these tools to OpenCode:
 
 - **`puter-models`** - List all available Puter models
 - **`puter-account`** - Show current account info
+- **`puter-usage`** - Show monthly credit usage and remaining balance (supports `--all`)
 
 ## Comparison: Puter vs Antigravity vs Alternatives
 

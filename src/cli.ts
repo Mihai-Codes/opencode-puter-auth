@@ -8,12 +8,14 @@
  *   puter-auth login       - Authenticate with Puter.com
  *   puter-auth logout      - Remove all stored credentials
  *   puter-auth status      - Show current authentication status
+ *   puter-auth usage       - Show monthly Puter credit usage
  *   puter-auth serve --mcp - Start MCP server for Zed/Claude Desktop
  *   puter-auth serve --openai --port 11434 - Start OpenAI-compatible proxy
  *   puter-auth --help      - Show this help message
  */
 
 import { createPuterAuthManager } from './auth.js';
+import { PuterClient } from './client.js';
 import { homedir } from 'os';
 import { join } from 'path';
 
@@ -29,6 +31,7 @@ COMMANDS:
   login        Authenticate with Puter.com (opens browser)
   logout       Remove all stored Puter credentials
   status       Show current authentication status
+  usage        Show monthly Puter credit usage
   serve        Start a server (use with --mcp for MCP protocol)
   help         Show this help message
 
@@ -37,10 +40,13 @@ OPTIONS:
   --openai     Start OpenAI-compatible HTTP proxy
   --port N     Port for --openai mode (default: 11434)
   --api-key K  Require API key (or use PUTER_OPENAI_PROXY_API_KEY)
+  --all        (usage) Show usage for all accounts
 
 EXAMPLES:
   puter-auth login          # Start browser authentication
   puter-auth status         # Check if authenticated
+  puter-auth usage          # Show monthly credit usage
+  puter-auth usage --all    # Show usage for all accounts
   puter-auth logout         # Clear credentials
   puter-auth serve --mcp    # Start MCP server for Zed IDE
   puter-auth serve --openai --port 11434
@@ -124,6 +130,94 @@ async function main() {
           console.log(`      Last used: ${new Date(acc.lastUsed).toLocaleString()}`);
         }
       }
+      break;
+    }
+
+    case 'usage': {
+      const showAll = args.includes('--all');
+      const accounts = authManager.getAllAccounts();
+      const active = authManager.getActiveAccount();
+
+      if (!active && accounts.length === 0) {
+        console.log('❌ Not authenticated with Puter.');
+        console.log('   Run: puter-auth login');
+        process.exit(1);
+      }
+
+      const formatDollars = (microcents: number): string => {
+        const dollars = microcents / 100_000_000;
+        return `$${dollars.toFixed(2)}`;
+      };
+
+      const getPercentUsed = (remaining: number, total: number): number => {
+        if (total === 0) return 0;
+        return Math.round(((total - remaining) / total) * 100);
+      };
+
+      const getStatus = (remaining: number, total: number): string => {
+        if (total === 0) return 'Unknown';
+        const percentRemaining = (remaining / total) * 100;
+        if (percentRemaining === 0) return 'Exhausted';
+        if (percentRemaining < 10) return 'Critical';
+        if (percentRemaining < 25) return 'Low';
+        if (percentRemaining < 50) return 'Moderate';
+        return 'Good';
+      };
+
+      if (showAll) {
+        console.log('Puter Account Usage (All Accounts)');
+        console.log('----------------------------------\n');
+        console.log('Account | Remaining | Status');
+        console.log('--------|-----------|-------');
+
+        for (const account of accounts) {
+          const marker = account === active ? ' (active)' : '';
+          const client = new PuterClient(account.authToken);
+          try {
+            const usage = await client.getMonthlyUsage();
+            const { remaining, monthUsageAllowance } = usage.allowanceInfo;
+            const status = getStatus(remaining, monthUsageAllowance);
+            console.log(`${account.username}${marker} | ${formatDollars(remaining)} | ${status}`);
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            console.log(`${account.username}${marker} | - | Error: ${errorMsg}`);
+          }
+        }
+
+        console.log('\nCredits are measured in microcents ($1.00 = 100,000,000 microcents).');
+      } else if (active) {
+        const client = new PuterClient(active.authToken);
+        try {
+          const usage = await client.getMonthlyUsage();
+          const { remaining, monthUsageAllowance } = usage.allowanceInfo;
+          const percentUsed = getPercentUsed(remaining, monthUsageAllowance);
+          const status = getStatus(remaining, monthUsageAllowance);
+
+          console.log('Puter Account Usage');
+          console.log('-------------------');
+          console.log(`Account:   ${active.username}`);
+          console.log(`Remaining: ${formatDollars(remaining)} of ${formatDollars(monthUsageAllowance)}`);
+          console.log(`Used:      ${percentUsed}%`);
+          console.log(`Status:    ${status}`);
+
+          if (usage.usage && Object.keys(usage.usage).length > 0) {
+            console.log('\nAPI Usage Breakdown');
+            console.log('API | Calls | Cost');
+            console.log('----|-------|-----');
+            for (const [api, data] of Object.entries(usage.usage)) {
+              console.log(`${api} | ${data.count.toLocaleString()} | ${formatDollars(data.cost)}`);
+            }
+          }
+
+          console.log('\nCredits are measured in microcents ($1.00 = 100,000,000 microcents).');
+          console.log('Tip: run `puter-auth usage --all` to see all accounts.');
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          console.error('❌ Failed to fetch usage:', errorMsg);
+          process.exit(1);
+        }
+      }
+
       break;
     }
 
