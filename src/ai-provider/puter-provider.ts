@@ -101,8 +101,8 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
     enabled: localConfig.fallback_enabled,
     fallbackModels: localConfig.fallback_models,
     cooldownMs: localConfig.fallback_cooldown_ms,
-    // Tie verbose fallback logs to debug mode by default.
-    verbose: localConfig.debug ?? false,
+    // Tie verbose fallback logs to debug mode by default (also requires logging enabled).
+    verbose: localConfig.log_enabled === true && (localConfig.debug ?? false),
     quiet: localConfig.quiet_mode ?? false,
     ...options.fallback,
   };
@@ -162,6 +162,7 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
     provider: 'puter',
     debug: localConfig.debug ?? false,
     quiet_mode: localConfig.quiet_mode ?? false,
+    log_enabled: localConfig.log_enabled === true,
     baseURL,
     timeout,
     headers: getHeaders,

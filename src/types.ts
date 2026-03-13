@@ -27,6 +27,7 @@ export type PuterAccountsStorage = z.infer<typeof PuterAccountsStorageSchema>;
 
 // Puter Configuration Schema
 export const PuterConfigSchema = z.object({
+  log_enabled: z.boolean().default(false),
   quiet_mode: z.boolean().default(false),
   debug: z.boolean().default(false),
   log_dir: z.string().optional(),

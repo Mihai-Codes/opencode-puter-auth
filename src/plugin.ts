@@ -342,6 +342,7 @@ async function loadConfig(configDir: string): Promise<Partial<PuterConfig>> {
  * Log a message (respects quiet mode)
  */
 function log(message: string, level: 'info' | 'warn' | 'error' = 'info'): void {
+  if (pluginConfig.log_enabled !== true) return;
   if (pluginConfig.quiet_mode) return;
   
   const prefix = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : '🟣';
@@ -812,7 +813,7 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
     // EVENT HANDLER
     // ========================================
     async event({ event }) {
-      if (pluginConfig.debug) {
+      if (pluginConfig.log_enabled === true && pluginConfig.debug) {
         console.log(`[puter-auth] Event: ${event.type}`);
       }
     },

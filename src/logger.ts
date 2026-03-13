@@ -31,6 +31,8 @@ export enum LogLevel {
  * Logger configuration options
  */
 export interface LoggerOptions {
+  /** Enable or disable all logging */
+  enabled?: boolean;
   /** Enable debug-level logging */
   debug?: boolean;
   /** Suppress all non-error output */
@@ -62,6 +64,22 @@ export interface Logger {
   /** Check if debug logging is enabled */
   isDebugEnabled(): boolean;
 }
+
+/**
+ * No-op logger that discards all messages
+ * Useful for testing or when logging should be completely disabled
+ */
+export const nullLogger: Logger = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  request: () => {},
+  response: () => {},
+  retry: () => {},
+  auth: () => {},
+  isDebugEnabled: () => false,
+};
 
 /**
  * Format a timestamp as HH:MM:SS
@@ -142,10 +160,15 @@ function formatData(data: unknown): string {
  */
 export function createLogger(options: LoggerOptions = {}): Logger {
   const {
+    enabled = true,
     debug = false,
     quiet_mode = false,
     prefix = 'puter-auth',
   } = options;
+
+  if (!enabled) {
+    return nullLogger;
+  }
 
   const effectiveLevel = quiet_mode
     ? LogLevel.ERROR
@@ -216,23 +239,8 @@ export function createLogger(options: LoggerOptions = {}): Logger {
  */
 export function createLoggerFromConfig(config: Partial<PuterConfig> = {}): Logger {
   return createLogger({
+    enabled: config.log_enabled === true,
     debug: config.debug ?? false,
     quiet_mode: config.quiet_mode ?? false,
   });
 }
-
-/**
- * No-op logger that discards all messages
- * Useful for testing or when logging should be completely disabled
- */
-export const nullLogger: Logger = {
-  debug: () => {},
-  info: () => {},
-  warn: () => {},
-  error: () => {},
-  request: () => {},
-  response: () => {},
-  retry: () => {},
-  auth: () => {},
-  isDebugEnabled: () => false,
-};

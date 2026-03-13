@@ -221,6 +221,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     
     // Create logger (uses console by default, can be configured)
     this.logger = createLogger({
+      enabled: config.log_enabled === true,
       debug: config.debug ?? false,
       quiet_mode: config.quiet_mode ?? false,
     });

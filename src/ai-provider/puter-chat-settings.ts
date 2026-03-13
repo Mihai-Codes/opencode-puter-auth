@@ -145,6 +145,11 @@ export interface PuterChatConfig {
   debug?: boolean;
 
   /**
+   * Enable or disable all logging.
+   */
+  log_enabled?: boolean;
+
+  /**
    * Suppress non-error logs.
    */
   quiet_mode?: boolean;

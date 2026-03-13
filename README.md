@@ -567,6 +567,7 @@ Create `~/.config/opencode/puter.json` for advanced settings:
 
 ```json
 {
+  "log_enabled": false,
   "quiet_mode": false,
   "debug": false,
   "api_timeout_ms": 120000,
@@ -584,6 +585,7 @@ Create `~/.config/opencode/puter.json` for advanced settings:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `log_enabled` | `false` | Enable all plugin/provider logs (set true to see logs) |
 | `quiet_mode` | `false` | Suppress status messages |
 | `debug` | `false` | Enable verbose debug logging (see below) |
 | `api_timeout_ms` | `120000` | Request timeout (2 min) |
