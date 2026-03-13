@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/gh/Mihai-Codes/opencode-puter-auth/graph/badge.svg)](https://codecov.io/gh/Mihai-Codes/opencode-puter-auth)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> Access Claude Opus 4.5, Sonnet 4.5, GPT-5, Gemini, DeepSeek, and 500+ AI models through Puter.com OAuth. Includes 400+ FREE OpenRouter models. No API keys needed - free tier available with undocumented limits.
+> OpenCode plugin that authenticates via Puter.com OAuth to unlock Claude Opus 4.5, GPT‑5, Gemini, DeepSeek, and 500+ models (including 400+ free OpenRouter options), with automatic fallback and no API keys required.
 
 Enable OpenCode to authenticate with [Puter.com](https://puter.com) via OAuth, giving you access to premium AI models through your Puter account. Ideal for app developers using the "User-Pays" model where each user covers their own AI costs.
 
