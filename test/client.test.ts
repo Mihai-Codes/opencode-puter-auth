@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PuterClient } from '../src/client.js';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 describe('PuterClient', () => {
   let originalFetch: typeof fetch;
@@ -194,6 +197,56 @@ describe('PuterClient', () => {
       // Should fetch again
       await client.listModels();
       expect(fetchCount).toBe(2);
+    });
+  });
+
+  describe('Response Caching', () => {
+    it('should cache chat responses when enabled', async () => {
+      const cacheDir = await mkdtemp(join(tmpdir(), 'puter-cache-test-'));
+      const client = new PuterClient('test-token', {
+        max_retries: 0,
+        cache_enabled: true,
+        cache_ttl_ms: 60000,
+        cache_max_entries: 10,
+        cache_directory: cacheDir,
+      });
+
+      const mockFetch = vi.fn().mockImplementation((url: string) => {
+        if (url.endsWith('/auth/get-user-app-token')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ token: 'user-token' }),
+            text: () => Promise.resolve(''),
+          });
+        }
+
+        if (url.endsWith('/drivers/call')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              result: {
+                message: { content: 'hello' },
+                finish_reason: 'stop',
+                usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+              },
+            }),
+            text: () => Promise.resolve(''),
+          });
+        }
+
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      global.fetch = mockFetch;
+
+      const messages = [{ role: 'user', content: 'Hello' }];
+      await client.chat(messages);
+      await client.chat(messages);
+
+      const driverCalls = mockFetch.mock.calls.filter(call => String(call[0]).includes('/drivers/call')).length;
+      expect(driverCalls).toBe(1);
+
+      await rm(cacheDir, { recursive: true, force: true });
     });
   });
 });

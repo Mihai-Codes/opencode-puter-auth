@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createPuterAuthManager } from './auth.js';
 import { PuterClient } from './client.js';
 import type { PuterChatMessage, PuterContentPart, PuterToolCall } from './types.js';
+import { loadPuterConfig } from './config.js';
 
 const CONFIG_DIR = join(homedir(), '.config', 'opencode');
 const DEFAULT_PORT = 11434;
@@ -170,14 +171,15 @@ function mapToolCalls(toolCalls: PuterToolCall[] | undefined) {
 }
 
 async function getClient(): Promise<{ client: PuterClient; username: string } | null> {
-  const authManager = createPuterAuthManager(CONFIG_DIR);
+  const config = await loadPuterConfig(CONFIG_DIR);
+  const authManager = createPuterAuthManager(CONFIG_DIR, config);
   await authManager.init();
 
   const account = authManager.getActiveAccount();
   if (!account) return null;
 
   return {
-    client: new PuterClient(account.authToken),
+    client: new PuterClient(account.authToken, config),
     username: account.username,
   };
 }
@@ -300,7 +302,7 @@ export async function startOpenAIProxy(options: OpenAIProxyOptions = {}): Promis
             temperature: body.temperature,
             max_tokens: body.max_tokens,
           })) {
-            if (chunk.text || chunk.reasoning) {
+            if (chunk.text) {
               writeSse(res, {
                 id,
                 object: 'chat.completion.chunk',
@@ -310,7 +312,26 @@ export async function startOpenAIProxy(options: OpenAIProxyOptions = {}): Promis
                   {
                     index: 0,
                     delta: {
-                      content: `${chunk.text || ''}${chunk.reasoning || ''}`,
+                      content: `${chunk.text || ''}`,
+                    },
+                    finish_reason: null,
+                  },
+                ],
+              });
+            }
+
+            if (chunk.reasoning) {
+              writeSse(res, {
+                id,
+                object: 'chat.completion.chunk',
+                created,
+                model,
+                choices: [
+                  {
+                    index: 0,
+                    delta: {
+                      content: chunk.reasoning,
+                      reasoning: chunk.reasoning,
                     },
                     finish_reason: null,
                   },

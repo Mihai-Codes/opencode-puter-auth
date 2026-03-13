@@ -9,6 +9,8 @@
  *   puter-auth logout      - Remove all stored credentials
  *   puter-auth status      - Show current authentication status
  *   puter-auth usage       - Show monthly Puter credit usage
+ *   puter-auth stats       - Show model latency/reliability stats
+ *   puter-auth cache       - Inspect or clear response cache
  *   puter-auth serve --mcp - Start MCP server for Zed/Claude Desktop
  *   puter-auth serve --openai --port 11434 - Start OpenAI-compatible proxy
  *   puter-auth --help      - Show this help message
@@ -16,10 +18,12 @@
 
 import { createPuterAuthManager } from './auth.js';
 import { PuterClient } from './client.js';
-import { homedir } from 'os';
-import { join } from 'path';
+import { ResponseCache } from './cache.js';
+import { ModelMetricsStore } from './metrics.js';
+import { loadPuterConfig } from './config.js';
+import { getConfigDir } from './paths.js';
 
-const configDir = join(homedir(), '.config', 'opencode');
+const configDir = getConfigDir();
 
 const HELP = `
 puter-auth - Puter.com Authentication for OpenCode
@@ -32,6 +36,8 @@ COMMANDS:
   logout       Remove all stored Puter credentials
   status       Show current authentication status
   usage        Show monthly Puter credit usage
+  stats        Show model latency and reliability stats
+  cache        Inspect or clear response cache
   serve        Start a server (use with --mcp for MCP protocol)
   help         Show this help message
 
@@ -41,12 +47,19 @@ OPTIONS:
   --port N     Port for --openai mode (default: 11434)
   --api-key K  Require API key (or use PUTER_OPENAI_PROXY_API_KEY)
   --all        (usage) Show usage for all accounts
+  --reset      (stats) Reset metrics (optionally for a model)
+  --clear      (cache) Clear response cache
 
 EXAMPLES:
   puter-auth login          # Start browser authentication
   puter-auth status         # Check if authenticated
   puter-auth usage          # Show monthly credit usage
   puter-auth usage --all    # Show usage for all accounts
+  puter-auth stats          # Show model stats
+  puter-auth stats gpt-5.2  # Show stats for one model
+  puter-auth stats --reset  # Reset all stats
+  puter-auth cache          # Show cache stats
+  puter-auth cache --clear  # Clear response cache
   puter-auth logout         # Clear credentials
   puter-auth serve --mcp    # Start MCP server for Zed IDE
   puter-auth serve --openai --port 11434
@@ -80,7 +93,8 @@ async function main() {
     process.exit(0);
   }
 
-  const authManager = createPuterAuthManager(configDir);
+  const config = await loadPuterConfig(configDir);
+  const authManager = createPuterAuthManager(configDir, config);
   await authManager.init();
 
   switch (command) {
@@ -172,7 +186,7 @@ async function main() {
 
         for (const account of accounts) {
           const marker = account === active ? ' (active)' : '';
-          const client = new PuterClient(account.authToken);
+          const client = new PuterClient(account.authToken, config);
           try {
             const usage = await client.getMonthlyUsage();
             const { remaining, monthUsageAllowance } = usage.allowanceInfo;
@@ -186,7 +200,7 @@ async function main() {
 
         console.log('\nCredits are measured in microcents ($1.00 = 100,000,000 microcents).');
       } else if (active) {
-        const client = new PuterClient(active.authToken);
+        const client = new PuterClient(active.authToken, config);
         try {
           const usage = await client.getMonthlyUsage();
           const { remaining, monthUsageAllowance } = usage.allowanceInfo;
@@ -218,6 +232,67 @@ async function main() {
         }
       }
 
+      break;
+    }
+
+    case 'stats': {
+      const reset = args.includes('--reset');
+      const modelArg = args.find(arg => !arg.startsWith('-') && arg !== 'stats');
+      const metrics = new ModelMetricsStore({
+        enabled: config.metrics_enabled ?? true,
+        maxSamples: config.metrics_max_samples ?? 200,
+        filePath: config.metrics_file,
+      });
+
+      if (reset) {
+        await metrics.reset(modelArg);
+        console.log(`✅ Metrics reset${modelArg ? ` for ${modelArg}` : ''}.`);
+        break;
+      }
+
+      const data = await metrics.getMetrics(modelArg);
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        console.log('No metrics recorded yet.');
+        break;
+      }
+
+      const rows = Array.isArray(data) ? data : [data];
+      console.log('Model Stats');
+      console.log('-----------\n');
+      console.log('Model | Requests | Success | Fail | Avg ms | P50 | P95 | Tokens/s | Last Used');
+      console.log('------|----------|---------|------|--------|-----|-----|----------|----------');
+      for (const row of rows) {
+        const lastUsed = row.lastUsed ? new Date(row.lastUsed).toLocaleString() : '-';
+        console.log(
+          `${row.model} | ${row.requestCount} | ${row.successCount} | ${row.failureCount} | ` +
+          `${Math.round(row.avgLatencyMs)} | ${Math.round(row.p50LatencyMs)} | ${Math.round(row.p95LatencyMs)} | ` +
+          `${row.avgTokensPerSecond.toFixed(1)} | ${lastUsed}`
+        );
+      }
+      break;
+    }
+
+    case 'cache': {
+      const clear = args.includes('--clear') || args.includes('clear');
+      const cache = new ResponseCache({
+        enabled: true,
+        ttlMs: config.cache_ttl_ms ?? 300000,
+        maxEntries: config.cache_max_entries ?? 100,
+        directory: config.cache_directory,
+      });
+
+      if (clear) {
+        await cache.clear();
+        console.log('✅ Response cache cleared.');
+        break;
+      }
+
+      const stats = await cache.getStats();
+      console.log('Response Cache');
+      console.log('--------------');
+      console.log(`Directory: ${stats.directory}`);
+      console.log(`Entries:   ${stats.entries}`);
+      console.log(`Size:      ${(stats.bytes / 1024).toFixed(1)} KB`);
       break;
     }
 

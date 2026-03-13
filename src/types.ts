@@ -48,6 +48,14 @@ export const PuterConfigSchema = z.object({
   
   // Cache Settings
   cache_ttl_ms: z.number().default(300000), // 5 minutes
+  cache_enabled: z.boolean().default(false),
+  cache_max_entries: z.number().default(100),
+  cache_directory: z.string().optional(),
+  
+  // Metrics Settings
+  metrics_enabled: z.boolean().default(true),
+  metrics_max_samples: z.number().default(200),
+  metrics_file: z.string().optional(),
   
   // Fallback Settings
   fallback_enabled: z.boolean().default(true),

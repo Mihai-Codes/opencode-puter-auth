@@ -11,6 +11,7 @@ import type { ProviderV2 } from '@ai-sdk/provider';
 import { generateId, withoutTrailingSlash } from '@ai-sdk/provider-utils';
 import { PuterChatLanguageModel } from './puter-chat-language-model.js';
 import type { PuterChatSettings, PuterProviderConfig, PuterChatConfig } from './puter-chat-settings.js';
+import { loadPuterConfigSync } from '../config.js';
 
 /**
  * Puter provider interface extending ProviderV2.
@@ -72,6 +73,7 @@ const DEFAULT_TIMEOUT = 120000;
  * ```
  */
 export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
+  const localConfig = loadPuterConfigSync();
   // Support both authToken and apiKey (OpenCode uses apiKey)
   const authToken = options.authToken || options.apiKey;
   
@@ -79,6 +81,21 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
   const timeout = options.timeout ?? DEFAULT_TIMEOUT;
   const fetchFn = options.fetch ?? globalThis.fetch;
   const generateIdFn = options.generateId ?? generateId;
+
+  const cacheConfig = {
+    enabled: localConfig.cache_enabled ?? false,
+    ttlMs: localConfig.cache_ttl_ms ?? 300000,
+    maxEntries: localConfig.cache_max_entries ?? 100,
+    directory: localConfig.cache_directory,
+    ...options.cache,
+  };
+
+  const metricsConfig = {
+    enabled: localConfig.metrics_enabled ?? true,
+    maxSamples: localConfig.metrics_max_samples ?? 200,
+    filePath: localConfig.metrics_file,
+    ...options.metrics,
+  };
 
   /**
    * Get auth token dynamically - either from options or from auth file.
@@ -139,6 +156,8 @@ export function createPuter(options: PuterProviderConfig = {}): PuterProvider {
     fetch: fetchFn,
     generateId: generateIdFn,
     fallback: options.fallback,
+    cache: cacheConfig,
+    metrics: metricsConfig,
   });
 
   /**

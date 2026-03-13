@@ -109,6 +109,25 @@ export interface PuterProviderConfig {
    * Controls automatic model fallback when rate limits are encountered.
    */
   fallback?: FallbackOptions;
+
+  /**
+   * Response cache configuration.
+   */
+  cache?: {
+    enabled?: boolean;
+    ttlMs?: number;
+    maxEntries?: number;
+    directory?: string;
+  };
+
+  /**
+   * Metrics tracking configuration.
+   */
+  metrics?: {
+    enabled?: boolean;
+    maxSamples?: number;
+    filePath?: string;
+  };
 }
 
 /**
@@ -151,4 +170,23 @@ export interface PuterChatConfig {
    * Controls automatic model fallback when rate limits are encountered.
    */
   fallback?: FallbackOptions;
+
+  /**
+   * Response cache configuration.
+   */
+  cache?: {
+    enabled?: boolean;
+    ttlMs?: number;
+    maxEntries?: number;
+    directory?: string;
+  };
+
+  /**
+   * Metrics tracking configuration.
+   */
+  metrics?: {
+    enabled?: boolean;
+    maxSamples?: number;
+    filePath?: string;
+  };
 }

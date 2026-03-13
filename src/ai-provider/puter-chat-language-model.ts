@@ -18,6 +18,7 @@ import type {
   LanguageModelV2Usage,
   LanguageModelV2Message,
   LanguageModelV2TextPart,
+  LanguageModelV2FilePart,
   LanguageModelV2ToolCallPart,
   LanguageModelV2ToolResultPart,
   LanguageModelV2FunctionTool,
@@ -36,6 +37,9 @@ import {
   AllAccountsOnCooldownError,
 } from '../account-rotation.js';
 import { createLogger, type Logger } from '../logger.js';
+import { ResponseCache, buildCacheKey } from '../cache.js';
+import { ModelMetricsStore } from '../metrics.js';
+import { getConfigDir } from '../paths.js';
 
 // Type definitions for Puter SDK responses
 interface PuterUsage {
@@ -59,7 +63,7 @@ interface PuterToolCall {
 
 // Content block from Claude-style response
 interface PuterContentBlock {
-  type: 'text' | 'tool_use';
+  type: 'text' | 'tool_use' | 'reasoning' | 'thinking';
   text?: string;
   // For tool_use blocks
   id?: string;
@@ -104,10 +108,12 @@ interface PuterSDKMessage {
 }
 
 interface PuterSDKContentPart {
-  type: 'text' | 'tool_result';
+  type: 'text' | 'tool_result' | 'image_url' | 'file';
   text?: string;
   tool_use_id?: string;
   content?: string;
+  image_url?: { url: string };
+  puter_path?: string;
 }
 
 interface PuterSDKTool {
@@ -122,6 +128,7 @@ interface PuterSDKTool {
 interface PuterSDKOptions {
   model: string;
   stream?: boolean;
+  vision?: boolean;
   max_tokens?: number;
   temperature?: number;
   top_p?: number;
@@ -140,6 +147,35 @@ interface PuterSDK {
   };
   setAuthToken: (token: string) => void;
   print: (message: unknown) => void;
+}
+
+interface CachedGenerateResult {
+  content: Array<LanguageModelV2Content>;
+  finishReason: LanguageModelV2FinishReason;
+  usage: LanguageModelV2Usage;
+  request?: { body?: unknown };
+  response?: { body?: unknown };
+}
+
+const BASE64_RE = /^[A-Za-z0-9+/=]+$/;
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+function isDataUrl(value: string): boolean {
+  return /^data:/i.test(value);
+}
+
+function isProbablyBase64(value: string): boolean {
+  return value.length > 32 && BASE64_RE.test(value);
+}
+
+function normalizeFileData(data: LanguageModelV2FilePart['data']): string | null {
+  if (typeof data === 'string') return data;
+  if (data instanceof URL) return data.toString();
+  if (data instanceof Uint8Array) return Buffer.from(data).toString('base64');
+  return null;
 }
 
 /**
@@ -167,6 +203,8 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
   private readonly fallbackManager: FallbackManager;
   private accountRotationManager: AccountRotationManager | null = null;
   private readonly logger: Logger;
+  private readonly responseCache: ResponseCache<CachedGenerateResult>;
+  private readonly metrics: ModelMetricsStore;
 
   constructor(
     modelId: string,
@@ -183,6 +221,19 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     
     // Create logger (uses console by default, can be configured)
     this.logger = createLogger({ debug: false }); // Will be quiet unless debug enabled
+
+    this.responseCache = new ResponseCache<CachedGenerateResult>({
+      enabled: config.cache?.enabled ?? false,
+      ttlMs: config.cache?.ttlMs ?? 300000,
+      maxEntries: config.cache?.maxEntries ?? 100,
+      directory: config.cache?.directory,
+    });
+
+    this.metrics = new ModelMetricsStore({
+      enabled: config.metrics?.enabled ?? true,
+      maxSamples: config.metrics?.maxSamples ?? 200,
+      filePath: config.metrics?.filePath,
+    });
     
     // AccountRotationManager will be initialized lazily when needed
     // (requires auth manager which may not be available at construction time)
@@ -199,9 +250,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
 
     try {
       // Load auth manager from config directory
-      const os = await import('os');
-      const path = await import('path');
-      const configDir = path.join(os.homedir(), '.config', 'opencode');
+      const configDir = getConfigDir();
       
       // Dynamically import auth module to avoid circular dependencies
       const { createPuterAuthManager } = await import('../auth.js');
@@ -364,8 +413,9 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
   /**
    * Convert AI SDK prompt to Puter SDK message format.
    */
-  private convertPromptToMessages(prompt: LanguageModelV2Message[]): PuterSDKMessage[] {
+  private convertPromptToMessages(prompt: LanguageModelV2Message[]): { messages: PuterSDKMessage[]; hasVision: boolean } {
     const messages: PuterSDKMessage[] = [];
+    let hasVision = false;
 
     for (const message of prompt) {
       if (message.role === 'system') {
@@ -374,15 +424,53 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
           content: message.content,
         });
       } else if (message.role === 'user') {
-        // Extract text from user message parts
-        const textParts = message.content
-          .filter((part): part is LanguageModelV2TextPart => part.type === 'text')
-          .map(part => part.text);
-        
-        messages.push({
-          role: 'user',
-          content: textParts.join('\n'),
-        });
+        const contentParts: PuterSDKContentPart[] = [];
+
+        for (const part of message.content) {
+          if (part.type === 'text') {
+            contentParts.push({ type: 'text', text: part.text });
+            continue;
+          }
+
+          if (part.type === 'file') {
+            const filePart = part as LanguageModelV2FilePart;
+            const mediaType = filePart.mediaType?.toLowerCase() ?? '';
+            const raw = normalizeFileData(filePart.data);
+
+            if (!raw) {
+              throw new Error('Unsupported file content provided to Puter.');
+            }
+
+            if (mediaType.startsWith('image/')) {
+              let url = raw;
+              if (!isHttpUrl(url) && !isDataUrl(url)) {
+                if (isProbablyBase64(url)) {
+                  url = `data:${mediaType};base64,${url}`;
+                }
+              }
+              contentParts.push({ type: 'image_url', image_url: { url } });
+              hasVision = true;
+              continue;
+            }
+
+            if (isHttpUrl(raw) || isDataUrl(raw)) {
+              throw new Error(
+                'Puter file inputs require a Puter path. Upload the file to Puter and pass its puter_path (e.g., /home/username/file.pdf).'
+              );
+            }
+
+            contentParts.push({ type: 'file', puter_path: raw });
+            continue;
+          }
+        }
+
+        if (contentParts.length === 0) {
+          messages.push({ role: 'user', content: '' });
+        } else if (contentParts.length === 1 && contentParts[0].type === 'text') {
+          messages.push({ role: 'user', content: contentParts[0].text || '' });
+        } else {
+          messages.push({ role: 'user', content: contentParts });
+        }
       } else if (message.role === 'assistant') {
         // Handle assistant messages with potential tool calls
         const textParts = message.content
@@ -437,7 +525,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
       }
     }
 
-    return messages;
+    return { messages, hasVision };
   }
 
   /**
@@ -466,7 +554,8 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
   private buildSDKOptions(
     options: LanguageModelV2CallOptions, 
     streaming: boolean,
-    modelOverride?: string
+    modelOverride?: string,
+    hasVision?: boolean
   ): PuterSDKOptions {
     // Filter to only function tools
     const functionTools = options.tools?.filter(
@@ -478,6 +567,10 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
       model: modelOverride ?? this.modelId,
       stream: streaming,
     };
+
+    if (hasVision) {
+      sdkOptions.vision = true;
+    }
 
     // Only add optional params if they have values
     const maxTokens = options.maxOutputTokens ?? this.settings.maxTokens;
@@ -567,8 +660,34 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     request?: { body?: unknown };
     response?: { body?: unknown };
   }> {
-    const messages = this.convertPromptToMessages(options.prompt);
+    const startTime = Date.now();
+    const { messages, hasVision } = this.convertPromptToMessages(options.prompt);
     const warnings: LanguageModelV2CallWarning[] = [];
+
+    const cacheKey = (this._modelConfig.cache?.enabled ?? false)
+      ? buildCacheKey({
+          model: this.modelId,
+          prompt: options.prompt,
+          maxOutputTokens: options.maxOutputTokens ?? this.settings.maxTokens,
+          temperature: options.temperature ?? this.settings.temperature,
+          topP: options.topP ?? this.settings.topP,
+          topK: options.topK ?? this.settings.topK,
+          stop: options.stopSequences ?? this.settings.stopSequences,
+          tools: options.tools,
+        })
+      : null;
+
+    if (cacheKey) {
+      const cached = await this.responseCache.get(cacheKey);
+      if (cached) {
+        return {
+          ...cached,
+          warnings: [
+            { type: 'other', message: 'Response served from cache' },
+          ],
+        };
+      }
+    }
     
     // Check if fallback is disabled for this request
     const useFallback = !this.settings.disableFallback;
@@ -576,7 +695,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     // Define the core chat operation (for a specific model)
     const executeChatForModel = async (model: string): Promise<PuterChatResponse> => {
       const puter = await this.initPuterSDK();
-      const sdkOptions = this.buildSDKOptions(options, false, model);
+      const sdkOptions = this.buildSDKOptions(options, false, model, hasVision);
       return await puter.ai.chat(messages, sdkOptions) as PuterChatResponse;
     };
     
@@ -600,37 +719,43 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     let actualModelUsed = this.modelId;
     let wasFallback = false;
     
-    if (useFallback) {
-      // Execute with account rotation + model fallback support
-      const fallbackResult = await this.fallbackManager.executeWithFallback(
-        this.modelId,
-        executeChatWithRotation,
-        this.logger
-      );
-      response = fallbackResult.result;
-      actualModelUsed = fallbackResult.usedModel;
-      wasFallback = fallbackResult.wasFallback;
-      
-      if (wasFallback) {
-        // Add a warning that fallback was used
-        warnings.push({
-          type: 'other',
-          message: `Model ${this.modelId} rate limited, used fallback: ${actualModelUsed}`,
-        });
+    try {
+      if (useFallback) {
+        // Execute with account rotation + model fallback support
+        const fallbackResult = await this.fallbackManager.executeWithFallback(
+          this.modelId,
+          executeChatWithRotation,
+          this.logger
+        );
+        response = fallbackResult.result;
+        actualModelUsed = fallbackResult.usedModel;
+        wasFallback = fallbackResult.wasFallback;
+        
+        if (wasFallback) {
+          // Add a warning that fallback was used
+          warnings.push({
+            type: 'other',
+            message: `Model ${this.modelId} rate limited, used fallback: ${actualModelUsed}`,
+          });
+        }
+      } else {
+        // Execute without fallback (but still with account rotation)
+        const { result, wasRotated, accountUsed } = await this.executeWithAccountRotation(
+          () => executeChatForModel(this.modelId)
+        );
+        response = result;
+        
+        if (wasRotated && accountUsed) {
+          warnings.push({
+            type: 'other',
+            message: `Rotated to account: ${accountUsed}`,
+          });
+        }
       }
-    } else {
-      // Execute without fallback (but still with account rotation)
-      const { result, wasRotated, accountUsed } = await this.executeWithAccountRotation(
-        () => executeChatForModel(this.modelId)
-      );
-      response = result;
-      
-      if (wasRotated && accountUsed) {
-        warnings.push({
-          type: 'other',
-          message: `Rotated to account: ${accountUsed}`,
-        });
-      }
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      await this.metrics.recordFailure(actualModelUsed, duration, error);
+      throw error;
     }
 
     const content: LanguageModelV2Content[] = [];
@@ -644,7 +769,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
       });
     }
 
-    // Handle tool use from Claude-style content blocks
+    // Handle tool use and reasoning from Claude-style content blocks
     if (Array.isArray(response.message?.content)) {
       for (const block of response.message.content) {
         if (block.type === 'tool_use' && block.id && block.name) {
@@ -653,6 +778,12 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
             toolCallId: block.id,
             toolName: block.name,
             input: typeof block.input === 'string' ? block.input : JSON.stringify(block.input || {}),
+          });
+        }
+        if ((block.type === 'reasoning' || block.type === 'thinking') && block.text) {
+          content.push({
+            type: 'reasoning',
+            text: block.text,
           });
         }
       }
@@ -670,7 +801,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
       }
     }
 
-    return {
+    const result: CachedGenerateResult & { warnings: Array<LanguageModelV2CallWarning> } = {
       content,
       finishReason: this.mapFinishReason(response.finish_reason),
       usage: this.mapUsage(response.usage),
@@ -680,6 +811,21 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
         body: response,
       },
     };
+
+    if (cacheKey) {
+      await this.responseCache.set(cacheKey, {
+        content: result.content,
+        finishReason: result.finishReason,
+        usage: result.usage,
+        request: result.request,
+        response: result.response,
+      });
+    }
+
+    const duration = Date.now() - startTime;
+    await this.metrics.recordSuccess(actualModelUsed, duration, response.usage);
+
+    return result;
   }
 
   /**
@@ -696,7 +842,8 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     stream: ReadableStream<LanguageModelV2StreamPart>;
     request?: { body?: unknown };
   }> {
-    const messages = this.convertPromptToMessages(options.prompt);
+    const startTime = Date.now();
+    const { messages, hasVision } = this.convertPromptToMessages(options.prompt);
     const warnings: LanguageModelV2CallWarning[] = [];
     const generateId = this._modelConfig.generateId;
     
@@ -706,7 +853,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
     // Define the core stream operation (for a specific model)
     const initiateStreamForModel = async (model: string): Promise<AsyncIterable<PuterStreamChunk>> => {
       const puter = await this.initPuterSDK();
-      const sdkOptions = this.buildSDKOptions(options, true, model);
+      const sdkOptions = this.buildSDKOptions(options, true, model, hasVision);
       return await puter.ai.chat(messages, sdkOptions) as AsyncIterable<PuterStreamChunk>;
     };
     
@@ -814,8 +961,12 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
             
             const chunk = result.value;
             isFirstChunk = false;
-            // Handle reasoning content (for thinking models like Kimi K2.5)
-            if (chunk.type === 'reasoning' && chunk.reasoning) {
+            // Handle reasoning content (for thinking models)
+            const reasoningChunk =
+              chunk.reasoning ??
+              ((chunk.type === 'reasoning' || chunk.type === 'thinking') ? chunk.text : undefined);
+
+            if (reasoningChunk) {
               if (!reasoningId) {
                 reasoningId = generateId();
                 controller.enqueue({
@@ -826,7 +977,7 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
               controller.enqueue({
                 type: 'reasoning-delta',
                 id: reasoningId,
-                delta: chunk.reasoning,
+                delta: reasoningChunk,
               });
             }
             
@@ -922,6 +1073,9 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
             finishReason: self.mapFinishReason(hasToolCalls ? 'tool_calls' : 'stop'),
           });
 
+          const duration = Date.now() - startTime;
+          await self.metrics.recordSuccess(actualModelUsed, duration, finalUsage);
+
           controller.close();
         } catch (error) {
           // Handle streaming timeout by probing for the actual error
@@ -957,6 +1111,8 @@ export class PuterChatLanguageModel implements LanguageModelV2 {
           } else {
             controller.error(error);
           }
+          const duration = Date.now() - startTime;
+          await self.metrics.recordFailure(actualModelUsed, duration, error);
         }
       },
     });

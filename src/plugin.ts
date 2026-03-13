@@ -13,23 +13,14 @@
 
 import type { Plugin, PluginInput, Hooks } from '@opencode-ai/plugin';
 import { tool } from '@opencode-ai/plugin';
-import path from 'node:path';
-import os from 'node:os';
 import http from 'node:http';
 import { URL } from 'node:url';
 import { PuterClient } from './client.js';
 import { createPuterAuthManager, type PuterAuthManager } from './auth.js';
 import type { PuterConfig, PuterChatMessage, PuterAccount } from './types.js';
-import { PuterConfigSchema } from './types.js';
-
-// Default config directory
-const getConfigDir = (): string => {
-  const xdgConfig = process.env.XDG_CONFIG_HOME;
-  if (xdgConfig) {
-    return path.join(xdgConfig, 'opencode');
-  }
-  return path.join(os.homedir(), '.config', 'opencode');
-};
+import { loadPuterConfig } from './config.js';
+import { getConfigDir } from './paths.js';
+import { ModelMetricsStore } from './metrics.js';
 
 // Plugin state
 let authManager: PuterAuthManager | null = null;
@@ -344,16 +335,7 @@ function getLoginPage(callbackPort: number): string {
  * Load plugin configuration from puter.json
  */
 async function loadConfig(configDir: string): Promise<Partial<PuterConfig>> {
-  const fs = await import('node:fs/promises');
-  const configPath = path.join(configDir, 'puter.json');
-  
-  try {
-    const data = await fs.readFile(configPath, 'utf-8');
-    const parsed = JSON.parse(data);
-    return PuterConfigSchema.partial().parse(parsed);
-  } catch {
-    return {};
-  }
+  return loadPuterConfig(configDir);
 }
 
 /**
@@ -623,6 +605,8 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
         args: {
           message: tool.schema.string().describe('The message to send to the AI'),
           model: tool.schema.string().optional().describe('Model to use (default: claude-sonnet-4-5). Options: claude-opus-4-5, claude-sonnet-4-5, gpt-5.2, gpt-4o, gemini-2.5-pro, etc.'),
+          image_url: tool.schema.string().optional().describe('Image URL or Puter path (for vision-capable models)'),
+          file_path: tool.schema.string().optional().describe('Puter file path for PDFs/documents (e.g., /home/you/file.pdf)'),
         },
         async execute(args) {
           if (!puterClient) {
@@ -630,8 +614,25 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
           }
           
           const model = args.model || 'claude-sonnet-4-5';
+          const contentParts: PuterChatMessage['content'] = (() => {
+            const parts = [];
+            if (args.message) {
+              parts.push({ type: 'text', text: args.message });
+            }
+            if (args.image_url) {
+              parts.push({ type: 'image_url', image_url: { url: args.image_url } });
+            }
+            if (args.file_path) {
+              parts.push({ type: 'file', puter_path: args.file_path });
+            }
+            if (parts.length === 1 && parts[0].type === 'text') {
+              return parts[0].text || '';
+            }
+            return parts;
+          })();
+
           const messages: PuterChatMessage[] = [
-            { role: 'user', content: args.message },
+            { role: 'user', content: contentParts },
           ];
           
           try {
@@ -770,6 +771,41 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
           return output;
         },
       }),
+
+      'puter-stats': tool({
+        description: 'Show model latency and reliability metrics collected locally.',
+        args: {
+          model: tool.schema.string().optional().describe('Filter stats to a specific model id'),
+          reset: tool.schema.boolean().optional().describe('Reset metrics (optionally for a single model)'),
+        },
+        async execute(args) {
+          const metrics = new ModelMetricsStore({
+            enabled: pluginConfig.metrics_enabled ?? true,
+            maxSamples: pluginConfig.metrics_max_samples ?? 200,
+            filePath: pluginConfig.metrics_file,
+          });
+
+          if (args.reset) {
+            await metrics.reset(args.model);
+            return `✅ Metrics reset${args.model ? ` for ${args.model}` : ''}.`;
+          }
+
+          const data = await metrics.getMetrics(args.model);
+          if (!data || (Array.isArray(data) && data.length === 0)) {
+            return 'No metrics recorded yet.';
+          }
+
+          const rows = Array.isArray(data) ? data : [data];
+          let output = '# Puter Model Stats\n\n';
+          output += '| Model | Requests | Success | Fail | Avg ms | P50 | P95 | Tokens/s | Last Used |\n';
+          output += '|-------|----------|---------|------|--------|-----|-----|----------|----------|\n';
+          for (const row of rows) {
+            const lastUsed = row.lastUsed ? new Date(row.lastUsed).toLocaleString() : '-';
+            output += `| ${row.model} | ${row.requestCount} | ${row.successCount} | ${row.failureCount} | ${Math.round(row.avgLatencyMs)} | ${Math.round(row.p50LatencyMs)} | ${Math.round(row.p95LatencyMs)} | ${row.avgTokensPerSecond.toFixed(1)} | ${lastUsed} |\n`;
+          }
+          return output;
+        },
+      }),
     },
 
     // ========================================
@@ -782,5 +818,3 @@ export const PuterAuthPlugin: Plugin = async (_input: PluginInput): Promise<Hook
     },
   };
 };
-
-

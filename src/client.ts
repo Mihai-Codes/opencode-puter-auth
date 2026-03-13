@@ -16,12 +16,16 @@ import type {
 } from './types.js';
 import { withRetry, type RetryOptions } from './retry.js';
 import { createLoggerFromConfig, type Logger } from './logger.js';
+import { ResponseCache, buildCacheKey, type CacheStats } from './cache.js';
+import { ModelMetricsStore } from './metrics.js';
 
 const DEFAULT_API_URL = 'https://api.puter.com';
 const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 1000;
 const DEFAULT_CACHE_TTL = 300000; // 5 minutes
+const DEFAULT_CACHE_MAX_ENTRIES = 100;
+const DEFAULT_METRICS_MAX_SAMPLES = 200;
 
 function normalizeErrorText(errorText: string): string {
   const trimmed = errorText?.trim();
@@ -94,12 +98,25 @@ export class PuterClient {
   private modelCache: ModelCache | null = null;
   private userAppTokenCache: UserAppTokenCache | null = null;
   private appOrigin: string;
+  private responseCache: ResponseCache<PuterChatResponse>;
+  private metrics: ModelMetricsStore;
 
   constructor(authToken: string, config: Partial<PuterConfig> = {}) {
     this.authToken = authToken;
     this.config = config;
     this.logger = createLoggerFromConfig(config);
     this.appOrigin = DEFAULT_APP_ORIGIN;
+    this.responseCache = new ResponseCache<PuterChatResponse>({
+      enabled: this.config.cache_enabled ?? false,
+      ttlMs: this.config.cache_ttl_ms ?? DEFAULT_CACHE_TTL,
+      maxEntries: this.config.cache_max_entries ?? DEFAULT_CACHE_MAX_ENTRIES,
+      directory: this.config.cache_directory,
+    });
+    this.metrics = new ModelMetricsStore({
+      enabled: this.config.metrics_enabled ?? true,
+      maxSamples: this.config.metrics_max_samples ?? DEFAULT_METRICS_MAX_SAMPLES,
+      filePath: this.config.metrics_file,
+    });
   }
 
   /**
@@ -243,6 +260,20 @@ export class PuterClient {
   }
 
   /**
+   * Clear cached chat responses (if enabled).
+   */
+  public async clearResponseCache(): Promise<void> {
+    await this.responseCache.clear();
+  }
+
+  /**
+   * Get response cache stats (if enabled).
+   */
+  public async getResponseCacheStats(): Promise<CacheStats> {
+    return this.responseCache.getStats();
+  }
+
+  /**
    * Invalidate the model cache
    * 
    * Forces the next `listModels()` call to fetch fresh data from the API.
@@ -279,6 +310,24 @@ export class PuterClient {
   ): Promise<PuterChatResponse> {
     const model = options.model || 'gpt-5-nano';
     const startTime = Date.now();
+    const cacheKeyInput = {
+      model,
+      messages,
+      max_tokens: options.max_tokens,
+      temperature: options.temperature,
+      tools: options.tools,
+    };
+    const cacheKey = (this.config.cache_enabled ?? false)
+      ? buildCacheKey(cacheKeyInput)
+      : null;
+
+    if (cacheKey) {
+      const cached = await this.responseCache.get(cacheKey);
+      if (cached) {
+        this.logger.debug('Using cached chat response', { model });
+        return cached;
+      }
+    }
     
     this.logger.request('POST', '/drivers/call', {
       method: 'complete',
@@ -299,13 +348,21 @@ export class PuterClient {
 
       const duration = Date.now() - startTime;
       this.logger.response(200, 'OK', duration);
+      const result = response.result as PuterChatResponse;
 
-      return response.result as PuterChatResponse;
+      if (cacheKey) {
+        await this.responseCache.set(cacheKey, result);
+      }
+
+      await this.metrics.recordSuccess(model, duration, result.usage);
+
+      return result;
     } catch (error) {
       const duration = Date.now() - startTime;
       const statusMatch = error instanceof Error && error.message.match(/\((\d+)\)/);
       const status = statusMatch ? parseInt(statusMatch[1], 10) : 500;
       this.logger.response(status, error instanceof Error ? error.message : 'Unknown error', duration);
+      await this.metrics.recordFailure(model, duration, error);
       throw error;
     }
   }
@@ -338,6 +395,7 @@ export class PuterClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
     const model = options.model || 'gpt-5-nano';
     const startTime = Date.now();
+    let finalUsage: PuterChatResponse['usage'] | undefined;
 
     this.logger.request('POST', '/drivers/call', {
       method: 'complete',
@@ -412,10 +470,14 @@ export class PuterClient {
           try {
             const chunk = JSON.parse(line) as PuterChatStreamChunk;
             yield chunk;
+            if (chunk.usage) {
+              finalUsage = chunk.usage;
+            }
             
             if (chunk.done) {
               const totalDuration = Date.now() - startTime;
               this.logger.response(200, 'Stream complete', totalDuration);
+              await this.metrics.recordSuccess(model, totalDuration, finalUsage);
               return;
             }
           } catch {
@@ -437,6 +499,11 @@ export class PuterClient {
       
       const totalDuration = Date.now() - startTime;
       this.logger.response(200, 'Stream ended', totalDuration);
+      await this.metrics.recordSuccess(model, totalDuration, finalUsage);
+    } catch (error) {
+      const totalDuration = Date.now() - startTime;
+      await this.metrics.recordFailure(model, totalDuration, error);
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }

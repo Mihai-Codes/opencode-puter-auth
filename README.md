@@ -176,7 +176,18 @@ puter-auth usage
 puter-auth usage --all
 ```
 
-5. **Use it:**
+5. **View stats / cache (optional):**
+
+```bash
+puter-auth stats
+puter-auth stats gpt-5.2
+puter-auth stats --reset
+
+puter-auth cache
+puter-auth cache --clear
+```
+
+6. **Use it:**
 
 ```bash
 opencode --model=puter/claude-opus-4-5
@@ -561,7 +572,13 @@ Create `~/.config/opencode/puter.json` for advanced settings:
   "api_timeout_ms": 120000,
   "auto_create_temp_user": true,
   "max_retries": 3,
-  "cache_ttl_ms": 300000
+  "cache_enabled": false,
+  "cache_ttl_ms": 300000,
+  "cache_max_entries": 100,
+  "cache_directory": "~/.cache/opencode/puter-responses",
+  "metrics_enabled": true,
+  "metrics_max_samples": 200,
+  "metrics_file": "~/.config/opencode/puter-metrics.json"
 }
 ```
 
@@ -572,13 +589,40 @@ Create `~/.config/opencode/puter.json` for advanced settings:
 | `api_timeout_ms` | `120000` | Request timeout (2 min) |
 | `auto_create_temp_user` | `true` | Auto-create temp account |
 | `max_retries` | `3` | Retry failed requests |
-| `cache_ttl_ms` | `300000` | Model list cache TTL (5 min) |
+| `cache_enabled` | `false` | Enable response caching for repeated prompts |
+| `cache_ttl_ms` | `300000` | Cache TTL (5 min) |
+| `cache_max_entries` | `100` | Max cached responses |
+| `cache_directory` | `~/.cache/opencode/puter-responses` | Cache directory |
+| `metrics_enabled` | `true` | Enable local latency/reliability metrics |
+| `metrics_max_samples` | `200` | Samples kept for latency stats |
+| `metrics_file` | `~/.config/opencode/puter-metrics.json` | Metrics storage file |
 | `fallback_enabled` | `true` | Enable automatic model fallback on rate limits |
 | `fallback_models` | See below | Custom list of fallback models |
 | `fallback_cooldown_ms` | `60000` | Cooldown period for rate-limited models (1 min) |
 | `account_rotation_enabled` | `true` | Enable automatic account rotation |
 | `account_rotation_strategy` | `round-robin` | Strategy: `round-robin` or `least-recently-used` |
 | `account_rotation_cooldown_ms` | `300000` | Cooldown for rate-limited accounts (5 min) |
+
+### Response Caching
+
+Enable response caching to avoid repeated requests for identical prompts (non-streaming only):
+
+```json
+{
+  "cache_enabled": true,
+  "cache_ttl_ms": 3600000,
+  "cache_max_entries": 200
+}
+```
+
+### Model Stats
+
+Local latency/reliability stats are stored in `puter-metrics.json` and can be viewed with:
+
+```bash
+puter-auth stats
+puter-auth stats gpt-5.2
+```
 
 ## Automatic Model Fallback
 
@@ -811,9 +855,27 @@ Fallback behavior:
 
 The plugin adds these tools to OpenCode:
 
+- **`puter-chat`** - Chat with Puter models (supports image_url and file_path inputs)
 - **`puter-models`** - List all available Puter models
 - **`puter-account`** - Show current account info
 - **`puter-usage`** - Show monthly credit usage and remaining balance (supports `--all`)
+- **`puter-stats`** - Show local model latency/reliability stats
+
+### Vision & PDF Inputs
+
+You can send images or PDFs using the OpenCode tool arguments:
+
+```
+Use puter-chat with:
+  message: "What is in this image?"
+  image_url: "https://example.com/cat.png"
+
+Use puter-chat with:
+  message: "Summarize this PDF"
+  file_path: "/home/you/docs/report.pdf"
+```
+
+For OpenAI proxy clients, use `image_url` and `file` content parts (with `puter_path` for PDFs).
 
 ## Comparison: Puter vs Antigravity vs Alternatives
 

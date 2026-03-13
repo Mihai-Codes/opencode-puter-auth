@@ -195,6 +195,7 @@ export function transformPuterStreamToOpenAI(chunk: PuterChatStreamChunk): strin
   
   if (chunk.reasoning) {
     // Include reasoning as a special field (some clients support this)
+    delta.reasoning = chunk.reasoning;
     delta.content = (delta.content || '') + chunk.reasoning;
   }
   
@@ -758,6 +759,7 @@ interface OpenAIChatCompletionResponse {
 interface OpenAIDelta {
   role?: 'assistant';
   content?: string;
+  reasoning?: string;
   tool_calls?: Array<{
     index: number;
     id?: string;
