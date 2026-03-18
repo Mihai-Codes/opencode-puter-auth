@@ -84,7 +84,7 @@
     "@opencode-ai/plugin": "^1.2.16",
     "@types/node": "^25.3.0",
     "@vitest/coverage-v8": "^4.0.18",
-    "@vitest/ui": "^4.0.18",
+    "@vitest/ui": "^4.1.0",
     "msw": "^2.12.10",
     "opencode-antigravity-auth": "^1.6.0",
     "typescript": "^5.0.0",
