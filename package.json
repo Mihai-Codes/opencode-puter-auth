@@ -93,7 +93,7 @@
   "dependencies": {
     "@ai-sdk/provider": "^3.0.8",
     "@ai-sdk/provider-utils": "^4.0.17",
-    "@heyputer/puter.js": "^2.2.10",
+    "@heyputer/puter.js": "^2.2.12",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "ai": "^6.0.111",
     "open": "^11.0.0",
