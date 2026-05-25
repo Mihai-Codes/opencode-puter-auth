@@ -1,5 +1,8 @@
 # opencode-puter-auth
 
+> [!IMPORTANT]
+> This repository is being archived and is no longer actively maintained. It remains available as a public, read-only reference; issues and pull requests are closed without resolution, and users may fork the project if they want to continue development.
+
 [![npm version](https://img.shields.io/npm/v/opencode-puter-auth.svg)](https://www.npmjs.com/package/opencode-puter-auth)
 [![CI](https://github.com/Mihai-Codes/opencode-puter-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/Mihai-Codes/opencode-puter-auth/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Mihai-Codes/opencode-puter-auth/graph/badge.svg)](https://codecov.io/gh/Mihai-Codes/opencode-puter-auth)
